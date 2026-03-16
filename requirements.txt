@@ -1,0 +1,2 @@
+streamlit==1.45.1
+bcrypt==4.1.3
