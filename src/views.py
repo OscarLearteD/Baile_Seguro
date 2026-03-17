@@ -262,6 +262,7 @@ def get_authorized_videos(user_id: int, category: str, level: str):
         INNER JOIN user_video_permissions uvp ON uvp.video_id = v.id
         WHERE uvp.user_id = ?
           AND v.is_active = 1
+          AND v.show_in_library = 1
           AND c.name = ?
           AND l.name = ?
         ORDER BY v.upload_date DESC, v.title ASC
@@ -631,6 +632,39 @@ def handle_create_video() -> None:
         key="video_students",
     )
 
+    st.markdown("---")
+    st.markdown("**Destino del vídeo**")
+    destination = st.radio(
+        "¿Dónde quieres publicar este vídeo?",
+        ["Biblioteca de vídeos", "Día del calendario", "Ambos"],
+        horizontal=True,
+        key="video_destination",
+    )
+
+    selected_slot_id = None
+    if destination in ("Día del calendario", "Ambos"):
+        cal_date = st.date_input(
+            "Fecha de la clase",
+            value=date.today(),
+            key="video_cal_date",
+        )
+        cal_date_str = cal_date.strftime("%Y-%m-%d")
+        slots = fetch_slots_for_date(cal_date_str)
+
+        if slots:
+            slot_options = {
+                f"{s['time_block']} — {s['name']}": s["id"]
+                for s in slots
+            }
+            chosen_slot_label = st.selectbox(
+                "Clase del calendario",
+                list(slot_options.keys()),
+                key="video_slot",
+            )
+            selected_slot_id = slot_options[chosen_slot_label]
+        else:
+            st.warning("No hay clases programadas para ese día. Elige otra fecha o crea los slots primero.")
+
     if st.button("Guardar vídeo", key="save_video_button"):
         clean_title = sanitize_text(title)
         clean_description = sanitize_text(description)
@@ -642,6 +676,10 @@ def handle_create_video() -> None:
 
         if not selected_students:
             st.error("Selecciona al menos un alumno con acceso.")
+            return
+
+        if destination in ("Día del calendario", "Ambos") and selected_slot_id is None:
+            st.error("Selecciona una fecha con clases programadas para asignar al calendario.")
             return
 
         try:
@@ -660,6 +698,8 @@ def handle_create_video() -> None:
                 final_source = sanitize_text(video_url)
                 source_type = get_video_source_type(final_source)
 
+            show_in_library = 0 if destination == "Día del calendario" else 1
+
             video_id = execute_insert(
                 """
                 INSERT INTO videos (
@@ -670,9 +710,10 @@ def handle_create_video() -> None:
                     thumbnail_url,
                     upload_date,
                     category_id,
-                    level_id
+                    level_id,
+                    show_in_library
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     clean_title,
@@ -683,6 +724,7 @@ def handle_create_video() -> None:
                     upload_date,
                     category_map[category_name],
                     level_map[level_name],
+                    show_in_library,
                 ),
             )
 
@@ -690,6 +732,12 @@ def handle_create_video() -> None:
                 execute_query(
                     "INSERT INTO user_video_permissions (user_id, video_id) VALUES (?, ?)",
                     (student_map[label], video_id),
+                )
+
+            if selected_slot_id is not None:
+                execute_query(
+                    "INSERT OR IGNORE INTO slot_videos (slot_id, video_id) VALUES (?, ?)",
+                    (selected_slot_id, video_id),
                 )
 
             st.success("Vídeo creado y permisos asignados correctamente.")

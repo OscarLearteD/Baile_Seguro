@@ -4,7 +4,10 @@
       "Bash(pip install:*)",
       "Bash(python3 -c \":*)",
       "Bash(pip3 install:*)",
-      "Bash(python3 -m pip install -q bcrypt streamlit)"
+      "Bash(python3 -m pip install -q bcrypt streamlit)",
+      "Bash(git commit:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)"
     ]
   }
 }

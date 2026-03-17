@@ -131,6 +131,15 @@ def initialize_database() -> None:
             """
         )
 
+        # Migración: añadir show_in_library si no existe todavía.
+        # Los vídeos existentes mantienen show_in_library = 1 (visible en biblioteca).
+        try:
+            cursor.execute(
+                "ALTER TABLE videos ADD COLUMN show_in_library INTEGER NOT NULL DEFAULT 1"
+            )
+        except Exception:
+            pass  # La columna ya existe
+
 
 # ---------------------------------------------------------------------------
 # Helpers genéricos
