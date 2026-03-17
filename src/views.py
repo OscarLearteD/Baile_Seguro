@@ -582,6 +582,14 @@ def handle_create_video() -> None:
 
     st.markdown("### Añadir vídeo")
 
+    # Destino al principio: condiciona qué campos se muestran
+    destination = st.radio(
+        "Destino del vídeo",
+        ["Biblioteca de vídeos", "Día del calendario", "Ambos"],
+        horizontal=True,
+        key="video_destination",
+    )
+
     title = st.text_input("Título", key="video_title")
     description = st.text_area("Descripción", key="video_description")
 
@@ -608,7 +616,6 @@ def handle_create_video() -> None:
             key="video_file_uploader",
             help="Formatos permitidos: mp4, mov, m4v, webm",
         )
-
         if uploaded_file is not None:
             st.success(f"Archivo seleccionado: {uploaded_file.name}")
 
@@ -620,27 +627,25 @@ def handle_create_video() -> None:
 
     upload_date = st.text_input(
         "Fecha de subida",
-        value="2026-03-16",
+        value=date.today().strftime("%Y-%m-%d"),
         key="video_upload_date",
     )
 
-    category_name = st.selectbox("Categoría", category_names, key="video_category")
-    level_name = st.selectbox("Nivel", level_names, key="video_level")
+    # Categoría y nivel: solo relevantes cuando va a la biblioteca
+    if destination in ("Biblioteca de vídeos", "Ambos"):
+        category_name = st.selectbox("Categoría", category_names, key="video_category")
+        level_name = st.selectbox("Nivel", level_names, key="video_level")
+    else:
+        category_name = category_names[0]
+        level_name = level_names[0]
+
     selected_students = st.multiselect(
         "Usuarios con acceso",
         student_labels,
         key="video_students",
     )
 
-    st.markdown("---")
-    st.markdown("**Destino del vídeo**")
-    destination = st.radio(
-        "¿Dónde quieres publicar este vídeo?",
-        ["Biblioteca de vídeos", "Día del calendario", "Ambos"],
-        horizontal=True,
-        key="video_destination",
-    )
-
+    # Selector de fecha y clase: solo cuando va al calendario
     selected_slot_id = None
     if destination in ("Día del calendario", "Ambos"):
         cal_date = st.date_input(
@@ -663,7 +668,7 @@ def handle_create_video() -> None:
             )
             selected_slot_id = slot_options[chosen_slot_label]
         else:
-            st.warning("No hay clases programadas para ese día. Elige otra fecha o crea los slots primero.")
+            st.warning("No hay clases programadas para ese día. Elige otra fecha.")
 
     if st.button("Guardar vídeo", key="save_video_button"):
         clean_title = sanitize_text(title)
