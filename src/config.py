@@ -22,6 +22,27 @@ LEVELS = [
     "Nivel avanzado",
 ]
 
+# Franjas horarias fijas para las clases del calendario
+TIME_BLOCKS = [
+    "19:00-20:00",
+    "20:00-21:00",
+    "21:00-22:00",
+]
+
+# Nombres de meses en español (índice 1-12, el 0 es vacío)
+MONTH_NAMES_ES = [
+    "",
+    "Enero", "Febrero", "Marzo", "Abril",
+    "Mayo", "Junio", "Julio", "Agosto",
+    "Septiembre", "Octubre", "Noviembre", "Diciembre",
+]
+
+# Nombres de días de la semana en español (índice 0 = lunes, 6 = domingo)
+DAY_NAMES_ES = [
+    "Lunes", "Martes", "Miércoles", "Jueves",
+    "Viernes", "Sábado", "Domingo",
+]
+
 DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1519925610903-381054cc2a1c?auto=format&fit=crop&w=1200&q=80"
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "m4v", "webm"}
 MAX_UPLOAD_MB = 200

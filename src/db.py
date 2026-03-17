@@ -23,7 +23,8 @@ def get_connection() -> Generator[sqlite3.Connection, None, None]:
 
 def initialize_database() -> None:
     """
-    Crea las tablas necesarias si no existen.
+    Crea todas las tablas necesarias si no existen.
+    Las nuevas tablas (class_slots, slot_videos) se añaden sin romper las existentes.
     """
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -94,37 +95,120 @@ def initialize_database() -> None:
             """
         )
 
+        # --- Nuevas tablas para el calendario ---
+
+        # class_slots: cada fila representa una clase concreta en un día,
+        # franja horaria y nombre de tarjeta.
+        # Modelo elegido: slot = fecha + franja + nombre_de_clase.
+        # Los vídeos se enlazan al slot mediante slot_videos (N:N).
+        # El control de acceso por usuario sigue en user_video_permissions.
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS class_slots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                time_block TEXT NOT NULL,
+                name TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        # slot_videos: relación N:N entre class_slots y videos.
+        # Un vídeo puede pertenecer a varios slots y un slot puede tener varios vídeos.
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS slot_videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot_id INTEGER NOT NULL,
+                video_id INTEGER NOT NULL,
+                FOREIGN KEY (slot_id) REFERENCES class_slots(id) ON DELETE CASCADE,
+                FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+                UNIQUE(slot_id, video_id)
+            );
+            """
+        )
+
+
+# ---------------------------------------------------------------------------
+# Helpers genéricos
+# ---------------------------------------------------------------------------
 
 def fetch_one(query: str, params: tuple[Any, ...] = ()) -> sqlite3.Row | None:
-    """
-    Devuelve una sola fila o None.
-    """
+    """Devuelve una sola fila o None."""
     with get_connection() as conn:
         cursor = conn.execute(query, params)
         return cursor.fetchone()
 
 
 def fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
-    """
-    Devuelve una lista de filas.
-    """
+    """Devuelve una lista de filas."""
     with get_connection() as conn:
         cursor = conn.execute(query, params)
         return cursor.fetchall()
 
 
 def execute_query(query: str, params: tuple[Any, ...] = ()) -> None:
-    """
-    Ejecuta una query de escritura sin devolver id.
-    """
+    """Ejecuta una query de escritura sin devolver id."""
     with get_connection() as conn:
         conn.execute(query, params)
 
 
 def execute_insert(query: str, params: tuple[Any, ...] = ()) -> int:
-    """
-    Ejecuta un INSERT y devuelve el id de la fila creada.
-    """
+    """Ejecuta un INSERT y devuelve el id de la fila creada."""
     with get_connection() as conn:
         cursor = conn.execute(query, params)
         return int(cursor.lastrowid)
+
+
+# ---------------------------------------------------------------------------
+# Queries específicas del calendario
+# ---------------------------------------------------------------------------
+
+def fetch_slots_for_date(date_str: str) -> list[sqlite3.Row]:
+    """
+    Devuelve todos los slots activos de una fecha concreta,
+    ordenados por franja horaria y sort_order.
+    """
+    return fetch_all(
+        """
+        SELECT id, date, time_block, name, sort_order
+        FROM class_slots
+        WHERE date = ? AND is_active = 1
+        ORDER BY time_block ASC, sort_order ASC
+        """,
+        (date_str,),
+    )
+
+
+def fetch_slot_videos_for_user(slot_id: int, user_id: int) -> list[sqlite3.Row]:
+    """
+    Devuelve los vídeos de un slot concreto que el usuario tiene permiso para ver.
+    La autorización se verifica contra user_video_permissions.
+    """
+    return fetch_all(
+        """
+        SELECT
+            v.id,
+            v.title,
+            v.description,
+            v.video_url,
+            v.video_source_type,
+            v.thumbnail_url,
+            v.upload_date,
+            c.name AS category_name,
+            l.name AS level_name
+        FROM videos v
+        INNER JOIN slot_videos sv ON sv.video_id = v.id
+        INNER JOIN categories c ON c.id = v.category_id
+        INNER JOIN levels l ON l.id = v.level_id
+        INNER JOIN user_video_permissions uvp ON uvp.video_id = v.id
+        WHERE sv.slot_id = ?
+          AND uvp.user_id = ?
+          AND v.is_active = 1
+        ORDER BY v.upload_date DESC, v.title ASC
+        """,
+        (slot_id, user_id),
+    )

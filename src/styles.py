@@ -4,6 +4,7 @@ import streamlit as st
 def inject_global_styles() -> None:
     """
     Estilos globales para una apariencia mobile-first más limpia.
+    Incluye estilos para el calendario mensual y las pantallas de slots.
     """
     st.markdown(
         """
@@ -92,9 +93,10 @@ def inject_global_styles() -> None:
             font-size: 0.9rem;
         }
 
+        /* Botones globales: full-width, buenos para móvil */
         div[data-testid="stButton"] > button {
             width: 100%;
-            min-height: 62px;
+            min-height: 52px;
             border-radius: 18px;
             border: 1px solid #e5e7eb;
             background: white;
@@ -125,6 +127,85 @@ def inject_global_styles() -> None:
             overflow: hidden;
         }
 
+        /* ------------------------------------------------------------------ */
+        /* Calendario mensual                                                  */
+        /* ------------------------------------------------------------------ */
+
+        .cal-wrapper {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 22px;
+            padding: 1rem 0.5rem 0.75rem 0.5rem;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            margin-bottom: 1rem;
+        }
+
+        .cal-month-title {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #111827;
+            padding: 0.4rem 0 0.1rem 0;
+            line-height: 1.3;
+        }
+
+        .cal-today-hint {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #ec4899;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .cal-day-header {
+            text-align: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #7c3aed;
+            padding: 0.35rem 0;
+        }
+
+        .cal-empty {
+            min-height: 44px;
+            display: block;
+        }
+
+        /* Separador visual entre secciones del dashboard */
+        .section-divider {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 1.25rem 0;
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* Pantalla del día — franjas horarias y tarjetas de slot              */
+        /* ------------------------------------------------------------------ */
+
+        .time-block-header {
+            background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 0.55rem 1.1rem;
+            border-radius: 14px;
+            margin: 1.1rem 0 0.5rem 0;
+            text-align: center;
+            letter-spacing: 0.03em;
+        }
+
+        .slot-empty {
+            background: rgba(255,255,255,0.85);
+            border: 1px dashed #d1d5db;
+            border-radius: 14px;
+            padding: 0.6rem 1rem;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.88rem;
+            margin-bottom: 0.4rem;
+        }
+
         @media (max-width: 640px) {
             .block-container {
                 padding-left: 0.85rem;
@@ -133,6 +214,10 @@ def inject_global_styles() -> None:
 
             .hero-title {
                 font-size: 1.35rem;
+            }
+
+            .cal-month-title {
+                font-size: 0.92rem;
             }
         }
         </style>

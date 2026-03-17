@@ -1,11 +1,26 @@
+import calendar as cal_module
+from datetime import date, datetime
 from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
 
 from src.auth import hash_password, is_admin
-from src.config import CATEGORIES, DEFAULT_THUMBNAIL, LEVELS
-from src.db import execute_insert, execute_query, fetch_all
+from src.config import (
+    CATEGORIES,
+    DAY_NAMES_ES,
+    DEFAULT_THUMBNAIL,
+    LEVELS,
+    MONTH_NAMES_ES,
+    TIME_BLOCKS,
+)
+from src.db import (
+    execute_insert,
+    execute_query,
+    fetch_all,
+    fetch_slot_videos_for_user,
+    fetch_slots_for_date,
+)
 from src.utils import (
     get_video_source_type,
     is_valid_url,
@@ -15,6 +30,10 @@ from src.utils import (
     youtube_embed_url,
 )
 
+
+# ---------------------------------------------------------------------------
+# Componentes de cabecera reutilizables
+# ---------------------------------------------------------------------------
 
 def render_app_header(title: str, subtitle: str) -> None:
     st.markdown(
@@ -76,20 +95,120 @@ def render_top_bar(on_logout=None) -> None:
             on_logout()
 
 
+# ---------------------------------------------------------------------------
+# Calendario mensual
+# ---------------------------------------------------------------------------
+
+def render_calendar() -> None:
+    """
+    Renderiza un calendario mensual navegable.
+    Cada día es un botón clickable que navega a la pantalla del día.
+    Usa st.columns(7) para el grid semanal (mobile-first: celdas cuadradas).
+    """
+    today = date.today()
+    year = st.session_state.get("calendar_year") or today.year
+    month = st.session_state.get("calendar_month") or today.month
+
+    st.markdown("<div class='cal-wrapper'>", unsafe_allow_html=True)
+
+    # --- Cabecera: mes/año y flechas de navegación ---
+    col_prev, col_title, col_next = st.columns([1, 4, 1])
+
+    with col_prev:
+        if st.button("◀", key="cal_prev_month"):
+            if month == 1:
+                st.session_state["calendar_month"] = 12
+                st.session_state["calendar_year"] = year - 1
+            else:
+                st.session_state["calendar_month"] = month - 1
+                st.session_state["calendar_year"] = year
+            st.rerun()
+
+    with col_title:
+        today_hint = (
+            f"Hoy: {today.day}"
+            if (year == today.year and month == today.month)
+            else ""
+        )
+        st.markdown(
+            f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
+            f"<div class='cal-today-hint'>{today_hint}</div>",
+            unsafe_allow_html=True,
+        )
+
+    with col_next:
+        if st.button("▶", key="cal_next_month"):
+            if month == 12:
+                st.session_state["calendar_month"] = 1
+                st.session_state["calendar_year"] = year + 1
+            else:
+                st.session_state["calendar_month"] = month + 1
+                st.session_state["calendar_year"] = year
+            st.rerun()
+
+    # --- Cabecera de días de la semana ---
+    day_labels = ["L", "M", "X", "J", "V", "S", "D"]
+    header_cols = st.columns(7)
+    for i, label in enumerate(day_labels):
+        with header_cols[i]:
+            st.markdown(
+                f"<div class='cal-day-header'>{label}</div>",
+                unsafe_allow_html=True,
+            )
+
+    # --- Grid de semanas ---
+    today_str = today.strftime("%Y-%m-%d")
+    month_weeks = cal_module.monthcalendar(year, month)
+
+    for week in month_weeks:
+        week_cols = st.columns(7)
+        for i, day in enumerate(week):
+            with week_cols[i]:
+                if day == 0:
+                    # Día fuera del mes: celda vacía
+                    st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
+                else:
+                    date_str = f"{year}-{month:02d}-{day:02d}"
+                    # Marcador visual para el día de hoy
+                    label = f"· {day} ·" if date_str == today_str else str(day)
+                    if st.button(label, key=f"cal_d_{date_str}"):
+                        st.session_state["selected_date"] = date_str
+                        st.session_state["screen"] = "calendar_day"
+                        st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
+# Dashboard principal (home)
+# ---------------------------------------------------------------------------
+
 def render_dashboard(on_logout) -> None:
     render_top_bar(on_logout=on_logout)
 
     render_app_header(
-        "Selecciona tu estilo",
-        "Accede a tus contenidos por carpeta. Elige una categoría para ver sus niveles.",
+        "Bienvenido a tu escuela",
+        "Consulta el calendario de clases o accede a tu biblioteca de vídeos.",
     )
 
-    st.markdown("<div class='section-label'>Categorías</div>", unsafe_allow_html=True)
+    # Sección 1: Calendario mensual
+    st.markdown("<div class='section-label'>Calendario de clases</div>", unsafe_allow_html=True)
+    render_calendar()
+
+    # Separador visual
+    st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+
+    # Sección 2: Biblioteca por categorías (funcionalidad existente)
+    st.markdown("<div class='section-label'>Biblioteca de vídeos</div>", unsafe_allow_html=True)
 
     for category in CATEGORIES:
         if st.button(category, key=f"cat_{category}"):
             navigate_to("levels", category=category, level=None)
 
+
+# ---------------------------------------------------------------------------
+# Pantalla de niveles (existente, sin cambios)
+# ---------------------------------------------------------------------------
 
 def render_level_screen(on_logout) -> None:
     category = st.session_state.get("selected_category")
@@ -119,6 +238,10 @@ def render_level_screen(on_logout) -> None:
         if st.button(level, key=f"level_{level}"):
             navigate_to("videos", category=category, level=level)
 
+
+# ---------------------------------------------------------------------------
+# Pantalla de vídeos por categoría/nivel (existente, sin cambios)
+# ---------------------------------------------------------------------------
 
 def get_authorized_videos(user_id: int, category: str, level: str):
     return fetch_all(
@@ -252,6 +375,142 @@ def render_video_screen(on_logout) -> None:
     for video in videos:
         render_video_card(video)
 
+
+# ---------------------------------------------------------------------------
+# Pantalla del día (nueva)
+# ---------------------------------------------------------------------------
+
+def render_calendar_day_screen(on_logout) -> None:
+    """
+    Muestra las 3 franjas horarias del día seleccionado y las tarjetas
+    (slots) que hay en cada franja. 9 tarjetas en total si el día tiene
+    clases programadas en todas las franjas.
+    """
+    selected_date = st.session_state.get("selected_date")
+
+    if not selected_date:
+        navigate_to("dashboard")
+        return
+
+    render_top_bar(on_logout=on_logout)
+
+    # Formatear fecha para mostrar en español
+    dt = datetime.strptime(selected_date, "%Y-%m-%d")
+    day_name = DAY_NAMES_ES[dt.weekday()]
+    month_name = MONTH_NAMES_ES[dt.month]
+
+    st.markdown(
+        f"<div class='breadcrumb'>Inicio / {day_name} {dt.day} de {month_name}</div>",
+        unsafe_allow_html=True,
+    )
+
+    render_app_header(
+        f"{day_name}, {dt.day} de {month_name}",
+        f"Clases programadas · {dt.day} de {month_name} de {dt.year}",
+    )
+
+    if st.button("← Volver al calendario", key="back_to_calendar"):
+        navigate_to("dashboard")
+
+    # Cargar slots de este día desde la BD
+    slots = fetch_slots_for_date(selected_date)
+
+    # Agrupar por franja horaria
+    slots_by_block: dict[str, list] = {block: [] for block in TIME_BLOCKS}
+    for slot in slots:
+        block = slot["time_block"]
+        if block in slots_by_block:
+            slots_by_block[block].append(slot)
+
+    # Renderizar cada franja horaria con sus tarjetas
+    for block in TIME_BLOCKS:
+        st.markdown(
+            f"<div class='time-block-header'>{block}</div>",
+            unsafe_allow_html=True,
+        )
+
+        block_slots = slots_by_block[block]
+
+        if not block_slots:
+            st.markdown(
+                "<div class='slot-empty'>Sin clases programadas en esta franja</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            for slot in block_slots:
+                if st.button(
+                    slot["name"],
+                    key=f"slot_{slot['id']}",
+                ):
+                    st.session_state["selected_slot_id"] = slot["id"]
+                    st.session_state["selected_slot_name"] = slot["name"]
+                    st.session_state["selected_time_block"] = slot["time_block"]
+                    st.session_state["screen"] = "slot_videos"
+                    st.rerun()
+
+
+# ---------------------------------------------------------------------------
+# Pantalla de vídeos de un slot (nueva)
+# ---------------------------------------------------------------------------
+
+def render_slot_videos_screen(on_logout) -> None:
+    """
+    Muestra los vídeos asociados a un slot concreto (día + franja + tarjeta).
+    Solo se muestran los vídeos que el usuario tiene permiso para ver.
+    """
+    user = st.session_state.get("user")
+    selected_date = st.session_state.get("selected_date")
+    slot_id = st.session_state.get("selected_slot_id")
+    slot_name = st.session_state.get("selected_slot_name", "")
+    time_block = st.session_state.get("selected_time_block", "")
+
+    if not user or not selected_date or not slot_id:
+        navigate_to("dashboard")
+        return
+
+    render_top_bar(on_logout=on_logout)
+
+    dt = datetime.strptime(selected_date, "%Y-%m-%d")
+    day_name = DAY_NAMES_ES[dt.weekday()]
+    month_name = MONTH_NAMES_ES[dt.month]
+
+    st.markdown(
+        f"<div class='breadcrumb'>Inicio / {dt.day} {month_name} / {time_block} / {slot_name}</div>",
+        unsafe_allow_html=True,
+    )
+
+    render_app_header(
+        slot_name,
+        f"{day_name} {dt.day} de {month_name} · {time_block}",
+    )
+
+    if st.button("← Volver", key="back_to_day"):
+        st.session_state["screen"] = "calendar_day"
+        st.rerun()
+
+    videos = fetch_slot_videos_for_user(slot_id=slot_id, user_id=user["id"])
+
+    st.markdown("<div class='section-label'>Vídeos disponibles</div>", unsafe_allow_html=True)
+
+    if not videos:
+        st.markdown(
+            """
+            <div class='empty-state'>
+                <h4 style='margin-bottom: 0.35rem;'>Sin vídeos disponibles</h4>
+                <p style='margin: 0;'>No hay vídeos asignados a esta clase para tu cuenta.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    for video in videos:
+        render_video_card(video)
+
+
+# ---------------------------------------------------------------------------
+# Panel de administración (existente, sin cambios)
+# ---------------------------------------------------------------------------
 
 def fetch_students():
     return fetch_all(
