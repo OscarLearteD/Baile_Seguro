@@ -209,6 +209,35 @@ def inject_global_styles() -> None:
             padding: 0.2rem 0;
         }
 
+        /* Botones de navegación del calendario: círculos con gradiente */
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3)))
+        [data-testid="stButton"] > button {
+            width: 48px !important;
+            min-width: 48px !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            font-size: 1.1rem !important;
+            font-weight: 700 !important;
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%) !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+            display: block !important;
+            margin: 0 auto !important;
+            line-height: 1 !important;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3)))
+        [data-testid="stButton"] > button:hover {
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 18px rgba(236, 72, 153, 0.45) !important;
+            color: white !important;
+        }
+
         /* Celda vacía (día fuera del mes) */
         .cal-empty {
             min-height: 40px;

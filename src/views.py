@@ -191,7 +191,7 @@ def render_calendar() -> None:
         col_prev, col_next = st.columns(2)
 
         with col_prev:
-            if st.button("◀ Anterior", key="cal_prev_month"):
+            if st.button("◀", key="cal_prev_month"):
                 if month == 1:
                     st.session_state["calendar_month"] = 12
                     st.session_state["calendar_year"] = year - 1
@@ -201,7 +201,7 @@ def render_calendar() -> None:
                 st.rerun()
 
         with col_next:
-            if st.button("Siguiente ▶", key="cal_next_month"):
+            if st.button("▶", key="cal_next_month"):
                 if month == 12:
                     st.session_state["calendar_month"] = 1
                     st.session_state["calendar_year"] = year + 1
