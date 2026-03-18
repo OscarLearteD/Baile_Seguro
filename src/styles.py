@@ -133,7 +133,6 @@ def inject_global_styles() -> None:
 
         /* Tarjeta contenedora del calendario (st.container border=True) */
         [data-testid="stVerticalBlockBorderWrapper"] {
-            position: relative !important;
             border-radius: 22px !important;
             border-color: #e5e7eb !important;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
@@ -141,33 +140,13 @@ def inject_global_styles() -> None:
             margin-bottom: 1rem !important;
         }
 
-        /* ◀ botón: posicionado absolutamente a la izquierda del título */
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(1) {
+        /* Input oculto del canal de comunicación JS→Python */
+        [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]) {
             position: absolute !important;
-            left: 0.5rem !important;
-            top: 0.35rem !important;
-            width: 52px !important;
-            z-index: 5 !important;
-        }
-
-        /* ▶ botón: posicionado absolutamente a la derecha del título */
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(3) {
-            position: absolute !important;
-            right: 0.5rem !important;
-            top: 0.35rem !important;
-            width: 52px !important;
-            z-index: 5 !important;
-        }
-
-        /* Título del mes: padding lateral para no solaparse con los botones */
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(2) {
-            padding: 0 64px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            height: 1px !important;
+            overflow: hidden !important;
         }
 
         /* Fix móvil: forzar las filas de 7 columnas como CSS Grid real,
@@ -239,40 +218,6 @@ def inject_global_styles() -> None:
             padding: 0.2rem 0;
         }
 
-        /* Botones de navegación ◀ ▶: círculos con gradiente */
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(1) [data-testid="stButton"] > button,
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(3) [data-testid="stButton"] > button {
-            width: 48px !important;
-            min-width: 48px !important;
-            height: 48px !important;
-            min-height: 48px !important;
-            border-radius: 50% !important;
-            padding: 0 !important;
-            font-size: 1.1rem !important;
-            font-weight: 700 !important;
-            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%) !important;
-            color: white !important;
-            border: none !important;
-            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
-            display: block !important;
-            margin: 0 auto !important;
-            line-height: 1 !important;
-        }
-
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(1) [data-testid="stButton"] > button:hover,
-        [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"]
-        > [data-testid="stElementContainer"]:nth-child(3) [data-testid="stButton"] > button:hover {
-            transform: scale(1.08) !important;
-            box-shadow: 0 6px 18px rgba(236, 72, 153, 0.45) !important;
-            color: white !important;
-        }
 
         /* Celda vacía (día fuera del mes) */
         .cal-empty {

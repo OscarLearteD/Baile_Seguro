@@ -175,8 +175,14 @@ def render_calendar() -> None:
     month = st.session_state.get("calendar_month") or today.month
 
     with st.container(border=True):
-        # Botón ◀ — se posiciona con CSS absolute a la izquierda del título
-        if st.button("◀", key="cal_prev_month"):
+        # Canal JS→Python: input oculto con placeholder único como selector
+        nav_action = st.text_input(
+            "", key="cal_nav_action",
+            label_visibility="collapsed",
+            placeholder="cal_nav_hidden",
+        )
+        if nav_action == "prev":
+            st.session_state["cal_nav_action"] = ""
             if month == 1:
                 st.session_state["calendar_month"] = 12
                 st.session_state["calendar_year"] = year - 1
@@ -184,21 +190,8 @@ def render_calendar() -> None:
                 st.session_state["calendar_month"] = month - 1
                 st.session_state["calendar_year"] = year
             st.rerun()
-
-        # Título centrado (2.º elemento: recibe padding lateral via CSS)
-        today_hint = (
-            f"Hoy: {today.day}"
-            if (year == today.year and month == today.month)
-            else ""
-        )
-        st.markdown(
-            f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
-            f"<div class='cal-today-hint'>{today_hint}</div>",
-            unsafe_allow_html=True,
-        )
-
-        # Botón ▶ — se posiciona con CSS absolute a la derecha del título
-        if st.button("▶", key="cal_next_month"):
+        elif nav_action == "next":
+            st.session_state["cal_nav_action"] = ""
             if month == 12:
                 st.session_state["calendar_month"] = 1
                 st.session_state["calendar_year"] = year + 1
@@ -206,6 +199,48 @@ def render_calendar() -> None:
                 st.session_state["calendar_month"] = month + 1
                 st.session_state["calendar_year"] = year
             st.rerun()
+
+        # Header: HTML flexbox con flechas reales — no depende de st.columns()
+        today_hint = (
+            f"Hoy: {today.day}"
+            if (year == today.year and month == today.month)
+            else ""
+        )
+        btn_style = (
+            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
+            "background:linear-gradient(135deg,#7c3aed,#ec4899);"
+            "color:white;font-size:1.2rem;font-weight:700;flex-shrink:0;"
+            "box-shadow:0 4px 14px rgba(124,58,237,0.35);"
+        )
+        components.html(
+            f"""
+            <div style="display:flex;align-items:center;
+                        justify-content:space-between;padding:4px 2px 2px 2px;">
+              <button style="{btn_style}" onclick="sendNav('prev')">&#9664;</button>
+              <div style="text-align:center;flex:1;padding:0 0.5rem;">
+                <div style="font-size:1rem;font-weight:800;color:#111827;
+                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
+                <div style="font-size:0.75rem;color:#ec4899;font-weight:600;">
+                  {today_hint}</div>
+              </div>
+              <button style="{btn_style}" onclick="sendNav('next')">&#9654;</button>
+            </div>
+            <script>
+            function sendNav(action) {{
+              var input = window.parent.document.querySelector(
+                'input[placeholder="cal_nav_hidden"]'
+              );
+              if (!input) return;
+              var setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value'
+              ).set;
+              setter.call(input, action);
+              input.dispatchEvent(new Event('input', {{bubbles: true}}));
+            }}
+            </script>
+            """,
+            height=68,
+        )
 
         # --- Cabecera de días de la semana ---
         day_labels = ["L", "M", "X", "J", "V", "S", "D"]
