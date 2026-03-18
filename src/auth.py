@@ -1,7 +1,9 @@
+import re
+
 import bcrypt
 import streamlit as st
 
-from src.db import fetch_one
+from src.db import fetch_one, register_user as db_register_user
 
 
 
@@ -81,6 +83,56 @@ def require_auth() -> None:
         st.warning("Debes iniciar sesión para acceder.")
         st.stop()
 
+
+
+def register_user(form_data: dict) -> tuple[bool, str]:
+    """
+    Valida los datos del formulario de registro y crea el usuario.
+    Devuelve (True, "") si OK, o (False, "mensaje de error") si falla.
+    """
+    full_name = form_data.get("full_name", "").strip()
+    first_surname = form_data.get("first_surname", "").strip()
+    username = form_data.get("username", "").strip().lower()
+    password = form_data.get("password", "").strip()
+    confirm_password = form_data.get("confirm_password", "").strip()
+    phone = form_data.get("phone", "").strip()
+    dance_role = form_data.get("dance_role", "").strip()
+    dance_styles = form_data.get("dance_styles", [])
+    level_id = form_data.get("level_id")
+
+    if not all([full_name, first_surname, username, password, confirm_password, phone, dance_role]):
+        return False, "Completa todos los campos."
+
+    if not dance_styles:
+        return False, "Selecciona al menos un estilo de baile."
+
+    if level_id is None:
+        return False, "Selecciona un nivel."
+
+    if password != confirm_password:
+        return False, "Las contraseñas no coinciden."
+
+    if not re.fullmatch(r"\d{9,15}", phone):
+        return False, "El teléfono debe tener entre 9 y 15 dígitos (solo números)."
+
+    existing = fetch_one("SELECT id FROM users WHERE username = ?", (username,))
+    if existing:
+        return False, "Ese nombre de usuario ya está en uso."
+
+    try:
+        db_register_user(
+            username=username,
+            full_name=full_name,
+            first_surname=first_surname,
+            phone=phone,
+            dance_role=dance_role,
+            dance_styles=dance_styles,
+            level_id=level_id,
+            password_hash=hash_password(password),
+        )
+        return True, ""
+    except Exception as exc:
+        return False, f"Error al crear la cuenta: {exc}"
 
 
 def is_admin() -> bool:

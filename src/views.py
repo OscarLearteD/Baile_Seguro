@@ -5,7 +5,7 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
-from src.auth import hash_password, is_admin
+from src.auth import hash_password, is_admin, register_user as auth_register_user
 from src.config import (
     CATEGORIES,
     DAY_NAMES_ES,
@@ -47,6 +47,64 @@ def render_app_header(title: str, subtitle: str) -> None:
     )
 
 
+def render_registration_form() -> None:
+    levels = fetch_all("SELECT id, name FROM levels ORDER BY sort_order ASC")
+    level_options = {row["name"]: row["id"] for row in levels}
+    level_names = list(level_options.keys())
+
+    with st.form("register_form", clear_on_submit=True):
+        st.markdown("### Crear cuenta")
+
+        full_name = st.text_input("Nombre", placeholder="Tu nombre")
+        first_surname = st.text_input("Primer apellido", placeholder="Tu primer apellido")
+        username = st.text_input("Nombre de usuario", placeholder="Ej. maria123")
+        password = st.text_input("Contraseña", type="password", placeholder="Elige una contraseña")
+        confirm_password = st.text_input("Confirmar contraseña", type="password", placeholder="Repite la contraseña")
+        phone = st.text_input("Teléfono", placeholder="Ej. 612345678")
+
+        dance_role_label = st.radio(
+            "Rol en el baile",
+            ["Leader", "Follower", "Ambos"],
+            horizontal=True,
+        )
+
+        dance_style_label = st.radio(
+            "Estilos de baile",
+            ["Salsa", "Bachata", "Ambos", "Otros"],
+            horizontal=True,
+        )
+
+        level_name = st.selectbox("Nivel", level_names) if level_names else None
+
+        submitted = st.form_submit_button("Crear cuenta")
+
+        if submitted:
+            role_map = {"Leader": "leader", "Follower": "follower", "Ambos": "both"}
+            style_map = {
+                "Salsa": ["Salsa"],
+                "Bachata": ["Bachata"],
+                "Ambos": ["Salsa", "Bachata"],
+                "Otros": ["Otros"],
+            }
+
+            success, message = auth_register_user({
+                "full_name": full_name,
+                "first_surname": first_surname,
+                "username": username,
+                "password": password,
+                "confirm_password": confirm_password,
+                "phone": phone,
+                "dance_role": role_map[dance_role_label],
+                "dance_styles": style_map[dance_style_label],
+                "level_id": level_options.get(level_name) if level_name else None,
+            })
+
+            if success:
+                st.success("¡Cuenta creada! Ya puedes iniciar sesión.")
+            else:
+                st.error(message)
+
+
 def render_login_screen(on_login) -> None:
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
@@ -55,24 +113,30 @@ def render_login_screen(on_login) -> None:
         "Accede a tus vídeos privados de salsa, bachata y otros estilos de forma simple y segura.",
     )
 
-    with st.form("login_form", clear_on_submit=False):
-        st.markdown("### Iniciar sesión")
-        username = st.text_input("Usuario", placeholder="Ej. maria")
-        password = st.text_input("Contraseña", type="password", placeholder="Introduce tu contraseña")
-        submitted = st.form_submit_button("Entrar")
+    tab_login, tab_register = st.tabs(["Iniciar sesión", "Registrarse"])
 
-        if submitted:
-            success, message = on_login(username, password)
-            if success:
-                st.success(message)
-                st.rerun()
-            else:
-                st.error(message)
+    with tab_login:
+        with st.form("login_form", clear_on_submit=False):
+            st.markdown("### Iniciar sesión")
+            username = st.text_input("Usuario", placeholder="Ej. maria")
+            password = st.text_input("Contraseña", type="password", placeholder="Introduce tu contraseña")
+            submitted = st.form_submit_button("Entrar")
 
-    with st.expander("Credenciales de prueba"):
-        st.write("Admin: admin  |  Contraseña: AdminDance2026!")
-        st.write("Usuario: maria  |  Contraseña: Dance2026!")
-        st.write("Usuario: oscar  |  Contraseña: BailaSeguro2026!")
+            if submitted:
+                success, message = on_login(username, password)
+                if success:
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+
+        with st.expander("Credenciales de prueba"):
+            st.write("Admin: admin  |  Contraseña: AdminDance2026!")
+            st.write("Usuario: maria  |  Contraseña: Dance2026!")
+            st.write("Usuario: oscar  |  Contraseña: BailaSeguro2026!")
+
+    with tab_register:
+        render_registration_form()
 
 
 def render_top_bar(on_logout=None) -> None:

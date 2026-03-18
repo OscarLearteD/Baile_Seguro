@@ -140,6 +140,17 @@ def initialize_database() -> None:
         except Exception:
             pass  # La columna ya existe
 
+        # Migración: campos extra de perfil de usuario
+        for migration in [
+            "ALTER TABLE users ADD COLUMN first_surname TEXT",
+            "ALTER TABLE users ADD COLUMN phone TEXT",
+            "ALTER TABLE users ADD COLUMN dance_role TEXT",
+        ]:
+            try:
+                cursor.execute(migration)
+            except Exception:
+                pass  # La columna ya existe
+
 
 # ---------------------------------------------------------------------------
 # Helpers genéricos
@@ -190,6 +201,63 @@ def fetch_slots_for_date(date_str: str) -> list[sqlite3.Row]:
         """,
         (date_str,),
     )
+
+
+def register_user(
+    username: str,
+    full_name: str,
+    first_surname: str,
+    phone: str,
+    dance_role: str,
+    dance_styles: list,
+    level_id: int,
+    password_hash: str,
+) -> int:
+    """
+    Inserta un nuevo usuario (role='student') y asigna automáticamente permisos
+    sobre todos los vídeos activos que coincidan con los estilos y nivel elegidos.
+    Devuelve el id del usuario creado.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO users (username, full_name, first_surname, phone, dance_role, password_hash, role, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 'student', 1)
+            """,
+            (username, full_name, first_surname, phone, dance_role, password_hash),
+        )
+        user_id = int(cursor.lastrowid)
+
+        if dance_styles and level_id:
+            placeholders = ",".join("?" * len(dance_styles))
+            category_rows = conn.execute(
+                f"SELECT id FROM categories WHERE name IN ({placeholders})",
+                dance_styles,
+            ).fetchall()
+            category_ids = [row["id"] for row in category_rows]
+
+            if category_ids:
+                cat_placeholders = ",".join("?" * len(category_ids))
+                video_rows = conn.execute(
+                    f"""
+                    SELECT id FROM videos
+                    WHERE category_id IN ({cat_placeholders})
+                      AND level_id = ?
+                      AND is_active = 1
+                    """,
+                    (*category_ids, level_id),
+                ).fetchall()
+
+                for video_row in video_rows:
+                    try:
+                        conn.execute(
+                            "INSERT INTO user_video_permissions (user_id, video_id) VALUES (?, ?)",
+                            (user_id, video_row["id"]),
+                        )
+                    except Exception:
+                        pass  # Permiso ya existía (UNIQUE constraint)
+
+        return user_id
 
 
 def fetch_slot_videos_for_user(slot_id: int, user_id: int) -> list[sqlite3.Row]:
