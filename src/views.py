@@ -272,6 +272,36 @@ def render_calendar() -> None:
                             st.session_state["screen"] = "calendar_day"
                             st.rerun()
 
+        # Resaltar el botón de hoy con JS: busca por el texto ·N· y aplica estilos
+        components.html(
+            """
+            <script>
+            (function() {
+                function styleToday() {
+                    var buttons = window.parent.document.querySelectorAll(
+                        '[data-testid="stButton"] > button'
+                    );
+                    buttons.forEach(function(btn) {
+                        var p = btn.querySelector('p');
+                        var text = p ? p.innerText.trim() : btn.innerText.trim();
+                        if (text && text.startsWith('\u00b7') && text.endsWith('\u00b7')) {
+                            btn.style.background = 'linear-gradient(135deg,#7c3aed,#ec4899)';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = 'transparent';
+                            btn.style.boxShadow = '0 4px 14px rgba(124,58,237,0.4)';
+                            btn.style.fontWeight = '800';
+                        }
+                    });
+                }
+                setTimeout(styleToday, 100);
+                setTimeout(styleToday, 400);
+                setTimeout(styleToday, 900);
+            })();
+            </script>
+            """,
+            height=0,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Dashboard principal (home)
