@@ -187,9 +187,6 @@ def inject_global_styles() -> None:
             padding: 0.4rem 0 0.1rem 0;
             line-height: 1.3;
             width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
         }
 
         .cal-today-hint {
@@ -197,11 +194,8 @@ def inject_global_styles() -> None:
             font-size: 0.75rem;
             color: #ec4899;
             font-weight: 600;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.4rem;
             width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
         }
 
         /* Cabeceras L M X J V S D */
