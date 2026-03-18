@@ -133,6 +133,7 @@ def inject_global_styles() -> None:
 
         /* Tarjeta contenedora del calendario (st.container border=True) */
         [data-testid="stVerticalBlockBorderWrapper"] {
+            position: relative !important;
             border-radius: 22px !important;
             border-color: #e5e7eb !important;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
@@ -140,26 +141,33 @@ def inject_global_styles() -> None:
             margin-bottom: 1rem !important;
         }
 
-        /* Fix móvil: forzar la fila de navegación del calendario (◀ | título | ▶)
-           como CSS Grid 1fr-4fr-1fr, solo dentro del bordered container */
+        /* ◀ botón: posicionado absolutamente a la izquierda del título */
         [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-child(3)):not(:has(> [data-testid="stColumn"]:nth-child(4))) {
-            display: grid !important;
-            grid-template-columns: 1fr 4fr 1fr !important;
-            gap: 4px !important;
-            width: 100% !important;
-            align-items: center !important;
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(1) {
+            position: absolute !important;
+            left: 0.5rem !important;
+            top: 0.35rem !important;
+            width: 52px !important;
+            z-index: 5 !important;
         }
 
+        /* ▶ botón: posicionado absolutamente a la derecha del título */
         [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-child(3)):not(:has(> [data-testid="stColumn"]:nth-child(4))) > [data-testid="stColumn"] {
-            min-width: 0 !important;
-            width: auto !important;
-            flex: none !important;
-            overflow: hidden !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(3) {
+            position: absolute !important;
+            right: 0.5rem !important;
+            top: 0.35rem !important;
+            width: 52px !important;
+            z-index: 5 !important;
+        }
+
+        /* Título del mes: padding lateral para no solaparse con los botones */
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(2) {
+            padding: 0 64px !important;
         }
 
         /* Fix móvil: forzar las filas de 7 columnas como CSS Grid real,
@@ -231,10 +239,13 @@ def inject_global_styles() -> None:
             padding: 0.2rem 0;
         }
 
-        /* Botones de navegación del calendario: círculos con gradiente */
+        /* Botones de navegación ◀ ▶: círculos con gradiente */
         [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3)))
-        [data-testid="stButton"] > button {
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(1) [data-testid="stButton"] > button,
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(3) [data-testid="stButton"] > button {
             width: 48px !important;
             min-width: 48px !important;
             height: 48px !important;
@@ -253,8 +264,11 @@ def inject_global_styles() -> None:
         }
 
         [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3)))
-        [data-testid="stButton"] > button:hover {
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(1) [data-testid="stButton"] > button:hover,
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:nth-child(3) [data-testid="stButton"] > button:hover {
             transform: scale(1.08) !important;
             box-shadow: 0 6px 18px rgba(236, 72, 153, 0.45) !important;
             color: white !important;
