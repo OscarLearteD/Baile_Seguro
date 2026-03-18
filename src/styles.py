@@ -140,6 +140,28 @@ def inject_global_styles() -> None:
             margin-bottom: 1rem !important;
         }
 
+        /* Fix móvil: forzar la fila de navegación del calendario (◀ | título | ▶)
+           como CSS Grid 1fr-4fr-1fr, solo dentro del bordered container */
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-child(3)):not(:has(> [data-testid="stColumn"]:nth-child(4))) {
+            display: grid !important;
+            grid-template-columns: 1fr 4fr 1fr !important;
+            gap: 4px !important;
+            width: 100% !important;
+            align-items: center !important;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"]:nth-child(3)):not(:has(> [data-testid="stColumn"]:nth-child(4))) > [data-testid="stColumn"] {
+            min-width: 0 !important;
+            width: auto !important;
+            flex: none !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
         /* Fix móvil: forzar las filas de 7 columnas como CSS Grid real,
            evitando el colapso responsive de st.columns() en pantallas estrechas */
         [data-testid="stHorizontalBlock"]:has(
