@@ -187,6 +187,44 @@ def execute_insert(query: str, params: tuple[Any, ...] = ()) -> int:
 # Queries específicas del calendario
 # ---------------------------------------------------------------------------
 
+def create_slot(date: str, time_block: str, name: str, sort_order: int) -> tuple[bool, str]:
+    """
+    Crea un nuevo slot en el calendario.
+    Devuelve (True, "") si OK o (False, mensaje) si ya existe o falla.
+    """
+    try:
+        execute_insert(
+            """
+            INSERT INTO class_slots (date, time_block, name, sort_order, is_active)
+            VALUES (?, ?, ?, ?, 1)
+            """,
+            (date, time_block, name, sort_order),
+        )
+        return True, ""
+    except Exception:
+        return False, "Ya existe una clase con ese nombre en esa franja y fecha."
+
+
+def delete_slot(slot_id: int) -> None:
+    """Elimina un slot y sus vínculos de slot_videos por CASCADE."""
+    execute_query("DELETE FROM class_slots WHERE id = ?", (slot_id,))
+
+
+def fetch_upcoming_slots(days: int = 30) -> list[sqlite3.Row]:
+    """Devuelve los slots activos de hoy en adelante (hasta `days` días)."""
+    return fetch_all(
+        """
+        SELECT id, date, time_block, name, sort_order
+        FROM class_slots
+        WHERE date >= date('now')
+          AND date <= date('now', ? || ' days')
+          AND is_active = 1
+        ORDER BY date ASC, time_block ASC, sort_order ASC
+        """,
+        (str(days),),
+    )
+
+
 def fetch_slots_for_date(date_str: str) -> list[sqlite3.Row]:
     """
     Devuelve todos los slots activos de una fecha concreta,

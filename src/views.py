@@ -15,11 +15,14 @@ from src.config import (
     TIME_BLOCKS,
 )
 from src.db import (
+    create_slot,
+    delete_slot,
     execute_insert,
     execute_query,
     fetch_all,
     fetch_slot_videos_for_user,
     fetch_slots_for_date,
+    fetch_upcoming_slots,
 )
 from src.utils import (
     get_video_source_type,
@@ -875,6 +878,53 @@ def handle_create_video() -> None:
             st.error(str(exc))
 
 
+def handle_calendar_slots() -> None:
+    # --- Crear slot ---
+    with st.form("create_slot_form", clear_on_submit=True):
+        st.markdown("### Crear clase")
+        slot_date = st.date_input("Fecha", value=date.today())
+        time_block = st.selectbox("Franja horaria", TIME_BLOCKS)
+        slot_name = st.text_input("Nombre de la clase", placeholder="Ej. Salsa Básica")
+        sort_order = st.number_input("Orden dentro de la franja", min_value=0, value=0, step=1)
+        submitted = st.form_submit_button("Crear clase")
+
+        if submitted:
+            clean_name = sanitize_text(slot_name)
+            if not clean_name:
+                st.error("El nombre de la clase es obligatorio.")
+            else:
+                ok, msg = create_slot(
+                    date=slot_date.strftime("%Y-%m-%d"),
+                    time_block=time_block,
+                    name=clean_name,
+                    sort_order=int(sort_order),
+                )
+                if ok:
+                    st.success(f"Clase '{clean_name}' creada correctamente.")
+                else:
+                    st.error(msg)
+
+    # --- Gestionar slots existentes ---
+    with st.expander("Gestionar clases existentes (próximos 30 días)"):
+        slots = fetch_upcoming_slots(days=30)
+        if not slots:
+            st.info("No hay clases programadas en los próximos 30 días.")
+        else:
+            for slot in slots:
+                col_info, col_btn = st.columns([5, 1])
+                with col_info:
+                    st.markdown(
+                        f"**{slot['date']}** · {slot['time_block']} · {slot['name']} "
+                        f"<span style='color:#9ca3af;font-size:0.82rem;'>(orden {slot['sort_order']})</span>",
+                        unsafe_allow_html=True,
+                    )
+                with col_btn:
+                    if st.button("🗑", key=f"del_slot_{slot['id']}", help="Eliminar clase"):
+                        delete_slot(slot["id"])
+                        st.success(f"Clase '{slot['name']}' eliminada.")
+                        st.rerun()
+
+
 def render_admin_screen(on_logout) -> None:
     if not is_admin():
         st.error("No tienes permisos para acceder al panel admin.")
@@ -896,7 +946,7 @@ def render_admin_screen(on_logout) -> None:
     if st.button("← Volver al inicio", key="back_from_admin"):
         navigate_to("dashboard", category=None, level=None)
 
-    tab1, tab2, tab3 = st.tabs(["Usuarios", "Vídeos", "Resumen"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Usuarios", "Vídeos", "Calendario", "Resumen"])
 
     with tab1:
         handle_create_user()
@@ -926,6 +976,9 @@ def render_admin_screen(on_logout) -> None:
         st.dataframe(videos, use_container_width=True, hide_index=True)
 
     with tab3:
+        handle_calendar_slots()
+
+    with tab4:
         total_users = fetch_all("SELECT COUNT(*) AS total FROM users")[0]["total"]
         total_students = fetch_all("SELECT COUNT(*) AS total FROM users WHERE role = 'student'")[0]["total"]
         total_videos = fetch_all("SELECT COUNT(*) AS total FROM videos")[0]["total"]
