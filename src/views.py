@@ -167,80 +167,78 @@ def render_calendar() -> None:
     """
     Renderiza un calendario mensual navegable.
     Cada día es un botón clickable que navega a la pantalla del día.
-    Usa st.columns(7) para el grid semanal (mobile-first: celdas cuadradas).
+    El grid de 7 columnas se fuerza a permanecer en fila en móvil
+    mediante CSS Grid override en styles.py.
     """
     today = date.today()
     year = st.session_state.get("calendar_year") or today.year
     month = st.session_state.get("calendar_month") or today.month
 
-    st.markdown("<div class='cal-wrapper'>", unsafe_allow_html=True)
+    with st.container(border=True):
+        # --- Cabecera: mes/año y flechas de navegación ---
+        col_prev, col_title, col_next = st.columns([1, 4, 1])
 
-    # --- Cabecera: mes/año y flechas de navegación ---
-    col_prev, col_title, col_next = st.columns([1, 4, 1])
+        with col_prev:
+            if st.button("◀", key="cal_prev_month"):
+                if month == 1:
+                    st.session_state["calendar_month"] = 12
+                    st.session_state["calendar_year"] = year - 1
+                else:
+                    st.session_state["calendar_month"] = month - 1
+                    st.session_state["calendar_year"] = year
+                st.rerun()
 
-    with col_prev:
-        if st.button("◀", key="cal_prev_month"):
-            if month == 1:
-                st.session_state["calendar_month"] = 12
-                st.session_state["calendar_year"] = year - 1
-            else:
-                st.session_state["calendar_month"] = month - 1
-                st.session_state["calendar_year"] = year
-            st.rerun()
-
-    with col_title:
-        today_hint = (
-            f"Hoy: {today.day}"
-            if (year == today.year and month == today.month)
-            else ""
-        )
-        st.markdown(
-            f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
-            f"<div class='cal-today-hint'>{today_hint}</div>",
-            unsafe_allow_html=True,
-        )
-
-    with col_next:
-        if st.button("▶", key="cal_next_month"):
-            if month == 12:
-                st.session_state["calendar_month"] = 1
-                st.session_state["calendar_year"] = year + 1
-            else:
-                st.session_state["calendar_month"] = month + 1
-                st.session_state["calendar_year"] = year
-            st.rerun()
-
-    # --- Cabecera de días de la semana ---
-    day_labels = ["L", "M", "X", "J", "V", "S", "D"]
-    header_cols = st.columns(7)
-    for i, label in enumerate(day_labels):
-        with header_cols[i]:
+        with col_title:
+            today_hint = (
+                f"Hoy: {today.day}"
+                if (year == today.year and month == today.month)
+                else ""
+            )
             st.markdown(
-                f"<div class='cal-day-header'>{label}</div>",
+                f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
+                f"<div class='cal-today-hint'>{today_hint}</div>",
                 unsafe_allow_html=True,
             )
 
-    # --- Grid de semanas ---
-    today_str = today.strftime("%Y-%m-%d")
-    month_weeks = cal_module.monthcalendar(year, month)
-
-    for week in month_weeks:
-        week_cols = st.columns(7)
-        for i, day in enumerate(week):
-            with week_cols[i]:
-                if day == 0:
-                    # Día fuera del mes: celda vacía
-                    st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
+        with col_next:
+            if st.button("▶", key="cal_next_month"):
+                if month == 12:
+                    st.session_state["calendar_month"] = 1
+                    st.session_state["calendar_year"] = year + 1
                 else:
-                    date_str = f"{year}-{month:02d}-{day:02d}"
-                    # Marcador visual para el día de hoy
-                    label = f"· {day} ·" if date_str == today_str else str(day)
-                    if st.button(label, key=f"cal_d_{date_str}"):
-                        st.session_state["selected_date"] = date_str
-                        st.session_state["screen"] = "calendar_day"
-                        st.rerun()
+                    st.session_state["calendar_month"] = month + 1
+                    st.session_state["calendar_year"] = year
+                st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        # --- Cabecera de días de la semana ---
+        day_labels = ["L", "M", "X", "J", "V", "S", "D"]
+        header_cols = st.columns(7)
+        for i, label in enumerate(day_labels):
+            with header_cols[i]:
+                st.markdown(
+                    f"<div class='cal-day-header'>{label}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # --- Grid de semanas ---
+        today_str = today.strftime("%Y-%m-%d")
+        month_weeks = cal_module.monthcalendar(year, month)
+
+        for week in month_weeks:
+            week_cols = st.columns(7)
+            for i, day in enumerate(week):
+                with week_cols[i]:
+                    if day == 0:
+                        # Día fuera del mes: celda vacía
+                        st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
+                    else:
+                        date_str = f"{year}-{month:02d}-{day:02d}"
+                        # Marcador visual para el día de hoy
+                        label = f"·{day}·" if date_str == today_str else str(day)
+                        if st.button(label, key=f"cal_d_{date_str}"):
+                            st.session_state["selected_date"] = date_str
+                            st.session_state["screen"] = "calendar_day"
+                            st.rerun()
 
 
 # ---------------------------------------------------------------------------

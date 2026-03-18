@@ -131,13 +131,52 @@ def inject_global_styles() -> None:
         /* Calendario mensual                                                  */
         /* ------------------------------------------------------------------ */
 
-        .cal-wrapper {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 22px;
-            padding: 1rem 0.5rem 0.75rem 0.5rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-            margin-bottom: 1rem;
+        /* Tarjeta contenedora del calendario (st.container border=True) */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            border-radius: 22px !important;
+            border-color: #e5e7eb !important;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+            background: white !important;
+            margin-bottom: 1rem !important;
+        }
+
+        /* Fix móvil: forzar las filas de 7 columnas como CSS Grid real,
+           evitando el colapso responsive de st.columns() en pantallas estrechas */
+        [data-testid="stHorizontalBlock"]:has(
+            > [data-testid="stColumn"]:nth-child(7)
+        ) {
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important;
+            gap: 3px !important;
+            width: 100% !important;
+            flex-wrap: nowrap !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(
+            > [data-testid="stColumn"]:nth-child(7)
+        ) > [data-testid="stColumn"] {
+            min-width: 0 !important;
+            width: auto !important;
+            flex: none !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+        }
+
+        /* Botones de días: compactos y cuadrados, caben en pantallas de 360px */
+        [data-testid="stHorizontalBlock"]:has(
+            > [data-testid="stColumn"]:nth-child(7)
+        ) [data-testid="stButton"] > button {
+            min-height: 40px !important;
+            height: 40px !important;
+            padding: 0 2px !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
+            line-height: 1 !important;
         }
 
         .cal-month-title {
@@ -157,18 +196,21 @@ def inject_global_styles() -> None:
             margin-bottom: 0.2rem;
         }
 
+        /* Cabeceras L M X J V S D */
         .cal-day-header {
             text-align: center;
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             color: #7c3aed;
-            padding: 0.35rem 0;
+            padding: 0.2rem 0;
         }
 
+        /* Celda vacía (día fuera del mes) */
         .cal-empty {
-            min-height: 44px;
+            min-height: 40px;
+            height: 40px;
             display: block;
         }
 
