@@ -175,20 +175,8 @@ def render_calendar() -> None:
     month = st.session_state.get("calendar_month") or today.month
 
     with st.container(border=True):
-        # --- Título: ancho completo para centrado perfecto ---
-        today_hint = (
-            f"Hoy: {today.day}"
-            if (year == today.year and month == today.month)
-            else ""
-        )
-        st.markdown(
-            f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
-            f"<div class='cal-today-hint'>{today_hint}</div>",
-            unsafe_allow_html=True,
-        )
-
-        # --- Navegación: ◀ y ▶ en fila separada ---
-        col_prev, col_next = st.columns(2)
+        # --- Cabecera: ◀ | Mes Año / Hoy: N | ▶ ---
+        col_prev, col_title, col_next = st.columns([1, 4, 1])
 
         with col_prev:
             if st.button("◀", key="cal_prev_month"):
@@ -199,6 +187,18 @@ def render_calendar() -> None:
                     st.session_state["calendar_month"] = month - 1
                     st.session_state["calendar_year"] = year
                 st.rerun()
+
+        with col_title:
+            today_hint = (
+                f"Hoy: {today.day}"
+                if (year == today.year and month == today.month)
+                else ""
+            )
+            st.markdown(
+                f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>"
+                f"<div class='cal-today-hint'>{today_hint}</div>",
+                unsafe_allow_html=True,
+            )
 
         with col_next:
             if st.button("▶", key="cal_next_month"):
