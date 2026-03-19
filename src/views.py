@@ -288,10 +288,10 @@ def render_calendar() -> None:
                         var p = btn.querySelector('p');
                         var text = p ? p.innerText.trim() : btn.innerText.trim();
                         if (text && text.startsWith('\u00b7') && text.endsWith('\u00b7')) {
-                            btn.style.background = 'linear-gradient(135deg,#7c3aed,#ec4899)';
-                            btn.style.color = 'white';
+                            btn.style.background = 'linear-gradient(135deg,#393836,#cca865)';
+                            btn.style.color = '#e9dfcd';
                             btn.style.borderColor = 'transparent';
-                            btn.style.boxShadow = '0 4px 14px rgba(124,58,237,0.4)';
+                            btn.style.boxShadow = '0 4px 14px rgba(204,168,101,0.4)';
                             btn.style.fontWeight = '800';
                         }
                     });
