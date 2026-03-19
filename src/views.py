@@ -436,11 +436,11 @@ def render_video_player(video) -> None:
 def render_video_card(video) -> None:
     vid_id = str(video["id"])
     source_type = video["video_source_type"]
-    thumb_src = get_thumbnail_src(video.get("thumbnail_url") or "")
+    thumb_src = get_thumbnail_src(video["thumbnail_url"] or "")
     title = video["title"]
     upload_date = video["upload_date"] or "Fecha no disponible"
     meta = f"{video['category_name']} · {video['level_name']} · {upload_date}"
-    description = video.get("description") or ""
+    description = video["description"] or ""
 
     thumb_img = (
         f'<img src="{thumb_src}" style="width:100%;display:block;'
