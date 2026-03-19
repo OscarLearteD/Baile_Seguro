@@ -1,7 +1,7 @@
+import time
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from src.auth import login_user, logout_user, require_auth
 from src.config import APP_NAME, PAGE_ICON, PAGE_LAYOUT, UPLOADS_DIR
@@ -52,54 +52,42 @@ def initialize_session_state() -> None:
 
 
 def show_splash() -> None:
-    """Inyecta el splash vía JS en el documento padre para que sea visible de inmediato."""
-    components.html(
+    placeholder = st.empty()
+    placeholder.markdown(
         """
-        <script>
-        (function () {
-            var doc = window.parent.document;
+        <style>
+        [data-testid="stHeader"], [data-testid="stToolbar"],
+        [data-testid="stDecoration"], footer { display: none !important; }
 
-            // Evitar duplicados si Streamlit re-ejecuta antes de que el overlay desaparezca
-            if (doc.getElementById('splash-overlay')) return;
-
-            var overlay = doc.createElement('div');
-            overlay.id = 'splash-overlay';
-            overlay.style.cssText = [
-                'position:fixed', 'top:0', 'left:0',
-                'width:100vw', 'height:100vh',
-                'background:#000',
-                'display:flex', 'align-items:center', 'justify-content:center',
-                'z-index:99999',
-                'opacity:1',
-                'transition:opacity 0.5s ease',
-            ].join(';');
-
-            var img = doc.createElement('img');
-            img.src = 'https://www.clasesdesalsaybachata.com/wp-content/uploads/2018/02/logo.png';
-            img.style.cssText = [
-                'max-width:300px',
-                'width:80vw',
-                'filter:drop-shadow(0 0 24px rgba(236,72,153,0.6))',
-                'animation:splashIn 0.5s ease forwards',
-            ].join(';');
-
-            var style = doc.createElement('style');
-            style.textContent = '@keyframes splashIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}';
-            doc.head.appendChild(style);
-
-            overlay.appendChild(img);
-            doc.body.appendChild(overlay);
-
-            // Fade-out y eliminación tras 2 segundos
-            setTimeout(function () {
-                overlay.style.opacity = '0';
-                setTimeout(function () { overlay.remove(); style.remove(); }, 500);
-            }, 2000);
-        })();
-        </script>
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            animation: splashIn 0.5s ease forwards;
+        }
+        @keyframes splashIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        </style>
+        <div id="splash-screen">
+            <img
+                src="https://www.clasesdesalsaybachata.com/wp-content/uploads/2018/02/logo.png"
+                style="max-width:300px; width:80vw;
+                       filter: drop-shadow(0 0 24px rgba(236,72,153,0.6));"
+                alt="Logo escuela"
+            />
+        </div>
         """,
-        height=0,
+        unsafe_allow_html=True,
     )
+    time.sleep(2)
+    placeholder.empty()
 
 
 def main() -> None:
@@ -115,8 +103,8 @@ def main() -> None:
     inject_global_styles()
 
     if not st.session_state.get("splash_shown"):
-        show_splash()
         st.session_state["splash_shown"] = True
+        show_splash()
 
     if st.session_state.get("authenticated"):
         require_auth()
