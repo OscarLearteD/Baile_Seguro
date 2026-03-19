@@ -866,6 +866,13 @@ def handle_create_video() -> None:
                     (student_map[label], video_id),
                 )
 
+            # El admin siempre tiene acceso a los vídeos que sube
+            admin_id = st.session_state["user"]["id"]
+            execute_query(
+                "INSERT OR IGNORE INTO user_video_permissions (user_id, video_id) VALUES (?, ?)",
+                (admin_id, video_id),
+            )
+
             if selected_slot_id is not None:
                 execute_query(
                     "INSERT OR IGNORE INTO slot_videos (slot_id, video_id) VALUES (?, ?)",
