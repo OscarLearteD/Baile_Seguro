@@ -211,9 +211,9 @@ def render_calendar() -> None:
         )
         btn_style = (
             "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
-            "background:linear-gradient(135deg,#7c3aed,#ec4899);"
-            "color:white;font-size:1.2rem;font-weight:700;flex-shrink:0;"
-            "box-shadow:0 4px 14px rgba(124,58,237,0.35);"
+            "background:linear-gradient(135deg,#393836,#746f6a);"
+            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
+            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
         )
         components.html(
             f"""
@@ -221,9 +221,9 @@ def render_calendar() -> None:
                         justify-content:space-between;padding:4px 2px 2px 2px;">
               <button style="{btn_style}" onclick="sendNav('prev')">&#9664;</button>
               <div style="text-align:center;flex:1;padding:0 0.5rem;">
-                <div style="font-size:1rem;font-weight:800;color:#111827;
+                <div style="font-size:1rem;font-weight:800;color:#1a1917;
                             line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
-                <div style="font-size:0.75rem;color:#ec4899;font-weight:600;">
+                <div style="font-size:0.75rem;color:#cca865;font-weight:600;">
                   {today_hint}</div>
               </div>
               <button style="{btn_style}" onclick="sendNav('next')">&#9654;</button>
