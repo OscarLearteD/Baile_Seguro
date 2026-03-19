@@ -433,84 +433,35 @@ def render_video_player(video) -> None:
         st.video(source)
 
 
+def _show_thumbnail(thumbnail: str) -> None:
+    """Muestra la miniatura usando st.image, soportando ruta local o URL."""
+    if not thumbnail:
+        return
+    path = Path(thumbnail)
+    if path.exists() and path.is_file():
+        st.image(str(path), use_container_width=True)
+    else:
+        st.image(thumbnail, use_container_width=True)
+
+
 def render_video_card(video) -> None:
     vid_id = str(video["id"])
-    source_type = video["video_source_type"]
-    thumb_src = get_thumbnail_src(video["thumbnail_url"] or "")
     title = video["title"]
     upload_date = video["upload_date"] or "Fecha no disponible"
     meta = f"{video['category_name']} · {video['level_name']} · {upload_date}"
     description = video["description"] or ""
-
-    thumb_img = (
-        f'<img src="{thumb_src}" style="width:100%;display:block;'
-        f'max-height:260px;object-fit:cover;" />'
-        if thumb_src else ""
-    )
-    overlay_css = f"""
-        <style>
-        #tw{vid_id}{{position:relative;cursor:pointer;border-radius:14px;overflow:hidden;}}
-        #tw{vid_id} .pb{{position:absolute;top:50%;left:50%;
-            transform:translate(-50%,-50%);background:rgba(57,56,54,0.78);
-            border-radius:50%;width:64px;height:64px;display:flex;
-            align-items:center;justify-content:center;color:#e9dfcd;
-            font-size:1.5rem;pointer-events:none;transition:background 0.2s;}}
-        #tw{vid_id}:hover .pb{{background:rgba(204,168,101,0.88);color:#1a1917;}}
-        </style>
-    """
+    thumbnail = video["thumbnail_url"] or ""
+    is_playing = st.session_state.get(f"play_{vid_id}", False)
 
     st.markdown("<div class='video-card'>", unsafe_allow_html=True)
 
-    if source_type == "youtube":
-        embed_url = youtube_embed_url(video["video_url"])
-        autoplay_url = f"{embed_url}?autoplay=1&rel=0" if embed_url else ""
-        components.html(
-            f"""
-            {overlay_css}
-            <div id="tw{vid_id}"
-                 onclick="document.getElementById('tw{vid_id}').style.display='none';
-                          document.getElementById('yp{vid_id}').style.display='block';">
-                {thumb_img}
-                <div class="pb">&#9654;</div>
-            </div>
-            <div id="yp{vid_id}" style="display:none;">
-                <iframe width="100%" height="300" src="{autoplay_url}"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write;
-                           encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen style="border-radius:14px;"></iframe>
-            </div>
-            """,
-            height=320,
-        )
+    if is_playing:
+        render_video_player(video)
     else:
-        is_playing = st.session_state.get(f"play_{vid_id}", False)
-        if is_playing or not thumb_src:
-            render_video_player(video)
-        else:
-            components.html(
-                f"""
-                {overlay_css}
-                <div id="tw{vid_id}" onclick="triggerPlay('{vid_id}')">
-                    {thumb_img}
-                    <div class="pb">&#9654;</div>
-                </div>
-                <script>
-                function triggerPlay(id) {{
-                    var inp = window.parent.document.querySelector(
-                        'input[placeholder="video_play_hidden"]'
-                    );
-                    if (!inp) return;
-                    var setter = Object.getOwnPropertyDescriptor(
-                        window.HTMLInputElement.prototype, 'value'
-                    ).set;
-                    setter.call(inp, id);
-                    inp.dispatchEvent(new Event('input', {{bubbles: true}}));
-                }}
-                </script>
-                """,
-                height=290,
-            )
+        _show_thumbnail(thumbnail)
+        if st.button("▶ Reproducir", key=f"play_btn_{vid_id}"):
+            st.session_state[f"play_{vid_id}"] = True
+            st.rerun()
 
     st.markdown(f"<div class='video-title'>{title}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='video-meta'>{meta}</div>", unsafe_allow_html=True)
@@ -550,17 +501,6 @@ def render_video_screen(on_logout) -> None:
     )
 
     st.markdown("<div class='section-label'>Vídeos disponibles</div>", unsafe_allow_html=True)
-
-    # Canal hidden para click-to-play en vídeos no-YouTube
-    play_action = st.text_input(
-        "", key="video_play_action",
-        label_visibility="collapsed",
-        placeholder="video_play_hidden",
-    )
-    if play_action:
-        st.session_state[f"play_{play_action}"] = True
-        st.session_state["video_play_action"] = ""
-        st.rerun()
 
     if not videos:
         st.markdown(
@@ -693,17 +633,6 @@ def render_slot_videos_screen(on_logout) -> None:
     videos = fetch_slot_videos_for_user(slot_id=slot_id, user_id=user["id"])
 
     st.markdown("<div class='section-label'>Vídeos disponibles</div>", unsafe_allow_html=True)
-
-    # Canal hidden para click-to-play en vídeos no-YouTube
-    slot_play_action = st.text_input(
-        "", key="slot_video_play_action",
-        label_visibility="collapsed",
-        placeholder="video_play_hidden",
-    )
-    if slot_play_action:
-        st.session_state[f"play_{slot_play_action}"] = True
-        st.session_state["slot_video_play_action"] = ""
-        st.rerun()
 
     if not videos:
         st.markdown(
