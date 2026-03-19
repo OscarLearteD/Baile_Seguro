@@ -189,7 +189,7 @@ def inject_global_styles() -> None:
         }
 
         [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]),
-        [data-testid="stTextInput"]:has(input[placeholder="video_play_hidden"]) {
+        [data-testid="stTextInput"]:has(input[placeholder^="vplay_"]) {
             position: absolute !important;
             opacity: 0 !important;
             pointer-events: none !important;

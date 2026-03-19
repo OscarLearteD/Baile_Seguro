@@ -433,17 +433,6 @@ def render_video_player(video) -> None:
         st.video(source)
 
 
-def _show_thumbnail(thumbnail: str) -> None:
-    """Muestra la miniatura usando st.image, soportando ruta local o URL."""
-    if not thumbnail:
-        return
-    path = Path(thumbnail)
-    if path.exists() and path.is_file():
-        st.image(str(path), use_container_width=True)
-    else:
-        st.image(thumbnail, use_container_width=True)
-
-
 def render_video_card(video) -> None:
     vid_id = str(video["id"])
     title = video["title"]
@@ -452,18 +441,73 @@ def render_video_card(video) -> None:
     description = video["description"] or ""
     thumbnail = video["thumbnail_url"] or ""
     is_playing = st.session_state.get(f"play_{vid_id}", False)
+    ph = f"vplay_{vid_id}"  # placeholder único por tarjeta
 
     st.markdown("<div class='video-card'>", unsafe_allow_html=True)
+    st.markdown(f"<div class='video-title'>{title}</div>", unsafe_allow_html=True)
 
     if is_playing:
         render_video_player(video)
     else:
-        _show_thumbnail(thumbnail)
-        if st.button("▶ Reproducir", key=f"play_btn_{vid_id}"):
+        # Hidden input — DEBE renderizarse antes del components.html
+        play_val = st.text_input(
+            "", key=f"play_inp_{vid_id}",
+            label_visibility="collapsed",
+            placeholder=ph,
+        )
+        if play_val:
             st.session_state[f"play_{vid_id}"] = True
+            st.session_state[f"play_inp_{vid_id}"] = ""
             st.rerun()
 
-    st.markdown(f"<div class='video-title'>{title}</div>", unsafe_allow_html=True)
+        thumb_src = get_thumbnail_src(thumbnail) if thumbnail else ""
+        thumb_html = (
+            f'<img src="{thumb_src}" style="width:100%;display:block;'
+            f'height:auto;border-radius:14px;" />'
+            if thumb_src
+            else '<div style="height:140px;background:#393836;border-radius:14px;'
+                 'display:flex;align-items:center;justify-content:center;'
+                 'color:#e9dfcd;font-size:0.9rem;">Sin miniatura</div>'
+        )
+        components.html(
+            f"""
+            <style>
+            .cw{{position:relative;cursor:pointer;border-radius:14px;overflow:hidden;display:block;}}
+            .pb{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                 background:rgba(57,56,54,0.82);border-radius:50%;
+                 width:64px;height:64px;display:flex;align-items:center;
+                 justify-content:center;color:#e9dfcd;font-size:1.6rem;
+                 pointer-events:none;transition:background 0.2s,color 0.2s;
+                 box-shadow:0 4px 16px rgba(0,0,0,0.35);}}
+            .cw:hover .pb{{background:rgba(204,168,101,0.92);color:#1a1917;}}
+            </style>
+            <div class="cw" onclick="doPlay('{vid_id}','{ph}')">
+                {thumb_html}
+                <div class="pb">&#9654;</div>
+            </div>
+            <script>
+            function doPlay(id, ph) {{
+                var tries = 0;
+                (function attempt() {{
+                    var inp = window.parent.document.querySelector(
+                        'input[placeholder="' + ph + '"]'
+                    );
+                    if (inp) {{
+                        var s = Object.getOwnPropertyDescriptor(
+                            window.HTMLInputElement.prototype, 'value'
+                        ).set;
+                        s.call(inp, id);
+                        inp.dispatchEvent(new Event('input', {{bubbles:true}}));
+                    }} else if (tries++ < 8) {{
+                        setTimeout(attempt, 150);
+                    }}
+                }})();
+            }}
+            </script>
+            """,
+            height=300,
+        )
+
     st.markdown(f"<div class='video-meta'>{meta}</div>", unsafe_allow_html=True)
     if description:
         st.write(description)
