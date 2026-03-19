@@ -188,7 +188,8 @@ def inject_global_styles() -> None:
             margin-bottom: 1rem !important;
         }
 
-        [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]) {
+        [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]),
+        [data-testid="stTextInput"]:has(input[placeholder="video_play_hidden"]) {
             position: absolute !important;
             opacity: 0 !important;
             pointer-events: none !important;
