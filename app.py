@@ -1,3 +1,4 @@
+import base64
 import time
 from pathlib import Path
 
@@ -52,14 +53,16 @@ def initialize_session_state() -> None:
 
 
 def show_splash() -> None:
+    logo_b64 = base64.b64encode(Path("assets/logo.png").read_bytes()).decode()
+
     placeholder = st.empty()
     placeholder.markdown(
-        """
+        f"""
         <style>
         [data-testid="stHeader"], [data-testid="stToolbar"],
-        [data-testid="stDecoration"], footer { display: none !important; }
+        [data-testid="stDecoration"], footer {{ display: none !important; }}
 
-        #splash-screen {
+        #splash-screen {{
             position: fixed;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
@@ -69,15 +72,15 @@ def show_splash() -> None:
             justify-content: center;
             z-index: 99999;
             animation: splashIn 0.5s ease forwards;
-        }
-        @keyframes splashIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to   { opacity: 1; transform: scale(1); }
-        }
+        }}
+        @keyframes splashIn {{
+            from {{ opacity: 0; transform: scale(0.95); }}
+            to   {{ opacity: 1; transform: scale(1); }}
+        }}
         </style>
         <div id="splash-screen">
             <img
-                src="https://www.clasesdesalsaybachata.com/wp-content/uploads/2018/02/logo.png"
+                src="data:image/png;base64,{logo_b64}"
                 style="max-width:300px; width:80vw;
                        filter: drop-shadow(0 0 24px rgba(236,72,153,0.6));"
                 alt="Logo escuela"
