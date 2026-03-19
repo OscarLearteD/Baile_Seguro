@@ -4,13 +4,24 @@ import streamlit as st
 def inject_global_styles() -> None:
     """
     Estilos globales para una apariencia mobile-first más limpia.
-    Incluye estilos para el calendario mensual y las pantallas de slots.
+    Paleta extraída del logo: dorados/champagne sobre carbón oscuro.
+
+    COLOR_PRIMARY  : #cca865  (dorado)
+    COLOR_SECONDARY: #d6ba85  (dorado claro)
+    COLOR_ACCENT   : #ae9f84  (taupe)
+    COLOR_DARK     : #393836  (carbón)
+    COLOR_MID      : #746f6a  (gris cálido)
+    COLOR_LIGHT    : #e9dfcd  (crema)
+    COLOR_CREAM    : #faf7f2  (crema muy claro, fondo)
     """
     st.markdown(
         """
         <style>
+        /* ------------------------------------------------------------------ */
+        /* Fondo general — crema muy suave que evoca el tono del logo         */
+        /* ------------------------------------------------------------------ */
         .stApp {
-            background: linear-gradient(180deg, #fdf2f8 0%, #f8fafc 25%, #ffffff 100%);
+            background: linear-gradient(180deg, #faf7f2 0%, #f5f0e8 40%, #ffffff 100%);
         }
 
         .block-container {
@@ -19,13 +30,19 @@ def inject_global_styles() -> None:
             padding-bottom: 3rem;
         }
 
+        /* ------------------------------------------------------------------ */
+        /* Hero card — carbón oscuro con destello dorado                      */
+        /* ------------------------------------------------------------------ */
         .hero-card {
-            background: linear-gradient(135deg, #111827 0%, #1f2937 55%, #312e81 100%);
+            background:
+                radial-gradient(ellipse at top right, rgba(204,168,101,0.18) 0%, transparent 60%),
+                linear-gradient(135deg, #1a1917 0%, #2e2b28 55%, #393836 100%);
             color: white;
             padding: 1.4rem;
             border-radius: 24px;
             margin-bottom: 1rem;
-            box-shadow: 0 18px 40px rgba(17, 24, 39, 0.18);
+            box-shadow: 0 18px 40px rgba(57, 56, 54, 0.28);
+            border: 1px solid rgba(204,168,101,0.15);
         }
 
         .hero-title {
@@ -37,89 +54,121 @@ def inject_global_styles() -> None:
 
         .hero-subtitle {
             font-size: 0.98rem;
-            opacity: 0.92;
+            opacity: 0.88;
             line-height: 1.45;
+            color: #e9dfcd;
         }
 
+        /* ------------------------------------------------------------------ */
+        /* Labels y cabeceras de sección                                      */
+        /* ------------------------------------------------------------------ */
         .section-label {
             font-size: 0.8rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #7c3aed;
+            color: #9a7a3f;
             margin: 0.6rem 0 0.4rem 0;
+            padding-left: 0.65rem;
+            border-left: 3px solid #cca865;
         }
 
         .breadcrumb {
             font-size: 0.92rem;
-            color: #6b7280;
+            color: #746f6a;
             margin-bottom: 0.75rem;
         }
 
+        /* ------------------------------------------------------------------ */
+        /* Tarjetas de vídeo y admin                                          */
+        /* ------------------------------------------------------------------ */
         .video-card,
         .admin-card {
             background: white;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #e9dfcd;
+            border-left: 4px solid #cca865;
             border-radius: 22px;
             padding: 1rem;
             margin-bottom: 1rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            box-shadow: 0 10px 24px rgba(57, 56, 54, 0.07);
+            transition: box-shadow 0.18s ease;
+        }
+
+        .video-card:hover,
+        .admin-card:hover {
+            box-shadow: 0 16px 32px rgba(204, 168, 101, 0.14);
         }
 
         .video-title {
             font-size: 1.05rem;
             font-weight: 700;
-            color: #111827;
+            color: #1a1917;
             margin-bottom: 0.2rem;
         }
 
         .video-meta {
-            color: #6b7280;
+            color: #746f6a;
             font-size: 0.9rem;
             margin-bottom: 0.5rem;
         }
 
         .empty-state {
             background: rgba(255,255,255,0.92);
-            border: 1px dashed #d1d5db;
+            border: 1px dashed #c5b28e;
             border-radius: 22px;
             padding: 1.2rem;
             text-align: center;
-            color: #4b5563;
+            color: #746f6a;
         }
 
         .small-note {
-            color: #6b7280;
+            color: #746f6a;
             font-size: 0.9rem;
         }
 
-        /* Botones globales: full-width, buenos para móvil */
+        /* ------------------------------------------------------------------ */
+        /* Botones — dorado en hover, suave sobre blanco                      */
+        /* ------------------------------------------------------------------ */
         div[data-testid="stButton"] > button {
             width: 100%;
             min-height: 52px;
             border-radius: 18px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #e9dfcd;
             background: white;
-            color: #111827;
+            color: #1a1917;
             font-weight: 700;
             font-size: 1rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            box-shadow: 0 10px 24px rgba(57, 56, 54, 0.06);
             transition: all 0.18s ease;
         }
 
         div[data-testid="stButton"] > button:hover {
-            border-color: #c084fc;
+            border-color: #cca865;
             transform: translateY(-1px);
-            box-shadow: 0 16px 28px rgba(139, 92, 246, 0.12);
-            color: #6d28d9;
+            box-shadow: 0 16px 28px rgba(204, 168, 101, 0.18);
+            color: #9a7a3f;
+        }
+
+        /* Botón primario (tipo filled) */
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background: linear-gradient(135deg, #cca865 0%, #d6ba85 100%);
+            color: #1a1917;
+            border: none;
+            box-shadow: 0 10px 24px rgba(204, 168, 101, 0.28);
+        }
+
+        div[data-testid="stButton"] > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #b8934d 0%, #cca865 100%);
+            box-shadow: 0 16px 32px rgba(204, 168, 101, 0.38);
+            color: #1a1917;
         }
 
         div[data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid #e5e7eb;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid #e9dfcd;
             border-radius: 24px;
             padding: 1rem;
-            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 16px 34px rgba(57, 56, 54, 0.08);
         }
 
         iframe {
@@ -131,16 +180,14 @@ def inject_global_styles() -> None:
         /* Calendario mensual                                                  */
         /* ------------------------------------------------------------------ */
 
-        /* Tarjeta contenedora del calendario (st.container border=True) */
         [data-testid="stVerticalBlockBorderWrapper"] {
             border-radius: 22px !important;
-            border-color: #e5e7eb !important;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+            border-color: #e9dfcd !important;
+            box-shadow: 0 10px 24px rgba(57, 56, 54, 0.06) !important;
             background: white !important;
             margin-bottom: 1rem !important;
         }
 
-        /* Input oculto del canal de comunicación JS→Python */
         [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]) {
             position: absolute !important;
             opacity: 0 !important;
@@ -149,8 +196,6 @@ def inject_global_styles() -> None:
             overflow: hidden !important;
         }
 
-        /* Fix móvil: forzar las filas de 7 columnas como CSS Grid real,
-           evitando el colapso responsive de st.columns() en pantallas estrechas */
         [data-testid="stHorizontalBlock"]:has(
             > [data-testid="stColumn"]:nth-child(7)
         ) {
@@ -171,7 +216,6 @@ def inject_global_styles() -> None:
             padding: 0 !important;
         }
 
-        /* Botones de días: compactos y cuadrados, caben en pantallas de 360px */
         [data-testid="stHorizontalBlock"]:has(
             > [data-testid="stColumn"]:nth-child(7)
         ) [data-testid="stButton"] > button {
@@ -192,7 +236,7 @@ def inject_global_styles() -> None:
             text-align: center;
             font-size: 1rem;
             font-weight: 800;
-            color: #111827;
+            color: #1a1917;
             padding: 0.4rem 0 0.1rem 0;
             line-height: 1.3;
             width: 100%;
@@ -201,7 +245,7 @@ def inject_global_styles() -> None:
         .cal-today-hint {
             text-align: center;
             font-size: 0.75rem;
-            color: #ec4899;
+            color: #cca865;
             font-weight: 600;
             margin-bottom: 0.4rem;
             width: 100%;
@@ -214,10 +258,9 @@ def inject_global_styles() -> None:
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            color: #7c3aed;
+            color: #9a7a3f;
             padding: 0.2rem 0;
         }
-
 
         /* Celda vacía (día fuera del mes) */
         .cal-empty {
@@ -229,7 +272,7 @@ def inject_global_styles() -> None:
         /* Separador visual entre secciones del dashboard */
         .section-divider {
             border: none;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid #e9dfcd;
             margin: 1.25rem 0;
         }
 
@@ -238,8 +281,8 @@ def inject_global_styles() -> None:
         /* ------------------------------------------------------------------ */
 
         .time-block-header {
-            background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
-            color: white;
+            background: linear-gradient(135deg, #393836 0%, #746f6a 100%);
+            color: #e9dfcd;
             font-weight: 700;
             font-size: 1rem;
             padding: 0.55rem 1.1rem;
@@ -247,15 +290,16 @@ def inject_global_styles() -> None:
             margin: 1.1rem 0 0.5rem 0;
             text-align: center;
             letter-spacing: 0.03em;
+            border-left: 4px solid #cca865;
         }
 
         .slot-empty {
             background: rgba(255,255,255,0.85);
-            border: 1px dashed #d1d5db;
+            border: 1px dashed #c5b28e;
             border-radius: 14px;
             padding: 0.6rem 1rem;
             text-align: center;
-            color: #9ca3af;
+            color: #ae9f84;
             font-size: 0.88rem;
             margin-bottom: 0.4rem;
         }
