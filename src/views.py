@@ -25,7 +25,6 @@ from src.db import (
     fetch_upcoming_slots,
 )
 from src.utils import (
-    get_thumbnail_src,
     get_video_source_type,
     is_valid_url,
     navigate_to,
@@ -441,7 +440,6 @@ def render_video_card(video) -> None:
     description = video["description"] or ""
     thumbnail = video["thumbnail_url"] or ""
     is_playing = st.session_state.get(f"play_{vid_id}", False)
-    ph = f"vplay_{vid_id}"  # placeholder único por tarjeta
 
     st.markdown("<div class='video-card'>", unsafe_allow_html=True)
     st.markdown(f"<div class='video-title'>{title}</div>", unsafe_allow_html=True)
@@ -449,64 +447,38 @@ def render_video_card(video) -> None:
     if is_playing:
         render_video_player(video)
     else:
-        # Hidden input — DEBE renderizarse antes del components.html
-        play_val = st.text_input(
-            "", key=f"play_inp_{vid_id}",
-            label_visibility="collapsed",
-            placeholder=ph,
-        )
-        if play_val:
-            st.session_state[f"play_{vid_id}"] = True
-            st.session_state[f"play_inp_{vid_id}"] = ""
-            st.rerun()
+        if thumbnail:
+            path = Path(thumbnail)
+            thumb_src = (
+                f"data:image/{path.suffix.lstrip('.').lower().replace('jpg','jpeg')}"
+                f";base64,{__import__('base64').b64encode(path.read_bytes()).decode()}"
+                if path.exists() and path.is_file()
+                else thumbnail
+            )
+            st.markdown(
+                f"""
+                <div style="position:relative;border-radius:14px;
+                            overflow:hidden;margin-bottom:0.5rem;">
+                    <img src="{thumb_src}"
+                         style="width:100%;display:block;height:auto;" />
+                    <div style="position:absolute;top:50%;left:50%;
+                                transform:translate(-50%,-50%);
+                                background:rgba(57,56,54,0.82);
+                                border-radius:50%;width:64px;height:64px;
+                                display:flex;align-items:center;
+                                justify-content:center;color:#e9dfcd;
+                                font-size:1.6rem;pointer-events:none;
+                                box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+                        &#9654;
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-        thumb_src = get_thumbnail_src(thumbnail) if thumbnail else ""
-        thumb_html = (
-            f'<img src="{thumb_src}" style="width:100%;display:block;'
-            f'height:auto;border-radius:14px;" />'
-            if thumb_src
-            else '<div style="height:140px;background:#393836;border-radius:14px;'
-                 'display:flex;align-items:center;justify-content:center;'
-                 'color:#e9dfcd;font-size:0.9rem;">Sin miniatura</div>'
-        )
-        components.html(
-            f"""
-            <style>
-            .cw{{position:relative;cursor:pointer;border-radius:14px;overflow:hidden;display:block;}}
-            .pb{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-                 background:rgba(57,56,54,0.82);border-radius:50%;
-                 width:64px;height:64px;display:flex;align-items:center;
-                 justify-content:center;color:#e9dfcd;font-size:1.6rem;
-                 pointer-events:none;transition:background 0.2s,color 0.2s;
-                 box-shadow:0 4px 16px rgba(0,0,0,0.35);}}
-            .cw:hover .pb{{background:rgba(204,168,101,0.92);color:#1a1917;}}
-            </style>
-            <div class="cw" onclick="doPlay('{vid_id}','{ph}')">
-                {thumb_html}
-                <div class="pb">&#9654;</div>
-            </div>
-            <script>
-            function doPlay(id, ph) {{
-                var tries = 0;
-                (function attempt() {{
-                    var inp = window.parent.document.querySelector(
-                        'input[placeholder="' + ph + '"]'
-                    );
-                    if (inp) {{
-                        var s = Object.getOwnPropertyDescriptor(
-                            window.HTMLInputElement.prototype, 'value'
-                        ).set;
-                        s.call(inp, id);
-                        inp.dispatchEvent(new Event('input', {{bubbles:true}}));
-                    }} else if (tries++ < 8) {{
-                        setTimeout(attempt, 150);
-                    }}
-                }})();
-            }}
-            </script>
-            """,
-            height=300,
-        )
+        if st.button("▶ Reproducir", key=f"play_btn_{vid_id}"):
+            st.session_state[f"play_{vid_id}"] = True
+            st.rerun()
 
     st.markdown(f"<div class='video-meta'>{meta}</div>", unsafe_allow_html=True)
     if description:

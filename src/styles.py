@@ -163,6 +163,22 @@ def inject_global_styles() -> None:
             color: #1a1917;
         }
 
+        /* Botón play dentro de tarjetas de vídeo */
+        .video-card div[data-testid="stButton"] > button {
+            background: linear-gradient(135deg, #393836 0%, #746f6a 100%) !important;
+            color: #e9dfcd !important;
+            border: none !important;
+            min-height: 44px !important;
+            font-size: 1rem !important;
+            letter-spacing: 0.04em !important;
+        }
+        .video-card div[data-testid="stButton"] > button:hover {
+            background: linear-gradient(135deg, #cca865 0%, #d6ba85 100%) !important;
+            color: #1a1917 !important;
+            border: none !important;
+            transform: translateY(-1px);
+        }
+
         div[data-testid="stForm"] {
             background: rgba(255, 255, 255, 0.97);
             border: 1px solid #e9dfcd;
