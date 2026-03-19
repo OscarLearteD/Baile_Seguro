@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -42,10 +43,53 @@ def initialize_session_state() -> None:
         "selected_slot_id": None,
         "selected_slot_name": None,
         "selected_time_block": None,
+        # Splash
+        "splash_shown": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+def show_splash() -> None:
+    st.markdown(
+        """
+        <style>
+        /* Ocultar toda la UI de Streamlit durante el splash */
+        [data-testid="stHeader"],
+        [data-testid="stSidebar"],
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"],
+        [data-testid="stMainBlockContainer"],
+        footer { display: none !important; }
+
+        .splash-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: splashFadeIn 0.5s ease-in forwards;
+        }
+        @keyframes splashFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        </style>
+        <div class="splash-overlay">
+            <img
+                src="https://www.clasesdesalsaybachata.com/wp-content/uploads/2018/02/logo.png"
+                style="max-width:300px; width:80vw;
+                       filter: drop-shadow(0 0 24px rgba(236,72,153,0.6));"
+                alt="Logo escuela"
+            />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def main() -> None:
@@ -59,6 +103,12 @@ def main() -> None:
     bootstrap()
     initialize_session_state()
     inject_global_styles()
+
+    if not st.session_state.get("splash_shown"):
+        show_splash()
+        time.sleep(2)
+        st.session_state["splash_shown"] = True
+        st.rerun()
 
     if st.session_state.get("authenticated"):
         require_auth()
