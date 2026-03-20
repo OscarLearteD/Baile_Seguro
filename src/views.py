@@ -153,9 +153,16 @@ def render_top_bar(on_logout=None) -> None:
         st.markdown(
             f"""
             <style>
+            /* Ensure Streamlit's own markdown wrapper doesn't clip the logo */
+            [data-testid="stMarkdownContainer"]:has(.site-logo-wrap) {{
+                overflow: visible !important;
+                line-height: 0;
+            }}
             .site-logo-wrap {{
                 display: flex;
                 justify-content: center;
+                align-items: flex-start;
+                overflow: visible;
                 margin-bottom: 0.5rem;
             }}
             @media (min-width: 640px) {{
@@ -164,12 +171,15 @@ def render_top_bar(on_logout=None) -> None:
                 }}
             }}
             .site-logo-wrap img {{
-                max-height: 40px;
+                display: block;
+                object-fit: contain;
                 width: auto;
+                height: auto;
+                max-height: 56px;
             }}
             @media (min-width: 640px) {{
                 .site-logo-wrap img {{
-                    max-height: 48px;
+                    max-height: 64px;
                 }}
             }}
             </style>
