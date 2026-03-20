@@ -463,8 +463,10 @@ def render_video_card(video) -> None:
     thumbnail = video["thumbnail_url"] or ""
     is_playing = st.session_state.get(f"play_{vid_id}", False)
 
-    st.markdown("<div class='video-card'>", unsafe_allow_html=True)
-    st.markdown(f"<div class='video-title'>{title}</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='video-card'><div class='video-title'>{title}</div>",
+        unsafe_allow_html=True,
+    )
 
     if is_playing:
         render_video_player(video)
