@@ -411,7 +411,7 @@ def render_video_player(video) -> None:
                 <iframe
                     width="100%"
                     height="360"
-                    src="{embed_url}"
+                    src="{embed_url}?autoplay=1"
                     title="YouTube video player"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -430,6 +430,28 @@ def render_video_player(video) -> None:
             st.error("El archivo de vídeo no se encuentra en el servidor.")
     else:
         st.video(source)
+
+    if source_type in ("upload", "direct_url"):
+        components.html(
+            """
+            <script>
+            (function() {
+                function tryPlay() {
+                    var videos = window.parent.document.querySelectorAll('video');
+                    if (videos.length === 0) { setTimeout(tryPlay, 150); return; }
+                    videos.forEach(function(v) {
+                        v.play().catch(function(err) {
+                            console.warn('Autoplay blocked:', err);
+                        });
+                    });
+                }
+                setTimeout(tryPlay, 100);
+                setTimeout(tryPlay, 500);
+            })();
+            </script>
+            """,
+            height=0,
+        )
 
 
 def render_video_card(video) -> None:
