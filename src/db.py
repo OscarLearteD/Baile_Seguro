@@ -221,6 +221,31 @@ def delete_slot(slot_id: int) -> None:
     execute_query("DELETE FROM class_slots WHERE id = ?", (slot_id,))
 
 
+def update_slot(slot_id: int, name: str, time_block: str, sort_order: int) -> None:
+    """Actualiza nombre, franja horaria y orden de un slot existente."""
+    execute_query(
+        "UPDATE class_slots SET name=?, time_block=?, sort_order=? WHERE id=?",
+        (name, time_block, sort_order, slot_id),
+    )
+
+
+def fetch_slot_counts_for_month(year: int, month: int) -> dict:
+    """
+    Devuelve un dict {date_str: count} con el número de slots activos
+    por día para el mes indicado.
+    """
+    rows = fetch_all(
+        """
+        SELECT date, COUNT(*) AS cnt
+        FROM class_slots
+        WHERE date LIKE ? AND is_active = 1
+        GROUP BY date
+        """,
+        (f"{year}-{month:02d}-%",),
+    )
+    return {row["date"]: row["cnt"] for row in rows}
+
+
 def fetch_upcoming_slots(days: int = 30) -> list[sqlite3.Row]:
     """Devuelve los slots activos de hoy en adelante (hasta `days` días)."""
     return fetch_all(

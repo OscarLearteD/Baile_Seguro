@@ -20,12 +20,14 @@ from src.db import (
     execute_insert,
     execute_query,
     fetch_all,
+    fetch_slot_counts_for_month,
     fetch_slot_videos_for_user,
     fetch_slots_for_date,
     fetch_upcoming_slots,
     fetch_vacation_days,
     fetch_vacation_map,
     set_vacation_days,
+    update_slot,
 )
 from src.utils import (
     get_video_source_type,
@@ -1094,51 +1096,306 @@ def handle_create_video() -> None:
             st.error(str(exc))
 
 
-def handle_calendar_slots() -> None:
-    # --- Crear slot ---
-    with st.form("create_slot_form", clear_on_submit=True):
-        st.markdown("### Crear clase")
-        slot_date = st.date_input("Fecha", value=date.today())
-        time_block = st.selectbox("Franja horaria", TIME_BLOCKS)
-        slot_name = st.text_input("Nombre de la clase", placeholder="Ej. Salsa Básica")
-        sort_order = st.number_input("Orden dentro de la franja", min_value=0, value=0, step=1)
-        submitted = st.form_submit_button("Crear clase")
+def _render_admin_slot_card(slot) -> None:
+    """Renders one class card with inline edit / delete-confirm actions."""
+    slot_id = slot["id"]
+    is_editing = st.session_state.get("admin_editing_slot") == slot_id
+    confirm_del = st.session_state.get("admin_delete_confirm") == slot_id
 
-        if submitted:
-            clean_name = sanitize_text(slot_name)
-            if not clean_name:
-                st.error("El nombre de la clase es obligatorio.")
-            else:
-                ok, msg = create_slot(
-                    date=slot_date.strftime("%Y-%m-%d"),
-                    time_block=time_block,
-                    name=clean_name,
-                    sort_order=int(sort_order),
-                )
-                if ok:
-                    st.success(f"Clase '{clean_name}' creada correctamente.")
-                else:
-                    st.error(msg)
-
-    # --- Gestionar slots existentes ---
-    with st.expander("Gestionar clases existentes (próximos 30 días)"):
-        slots = fetch_upcoming_slots(days=30)
-        if not slots:
-            st.info("No hay clases programadas en los próximos 30 días.")
-        else:
-            for slot in slots:
-                col_info, col_btn = st.columns([5, 1])
-                with col_info:
-                    st.markdown(
-                        f"**{slot['date']}** · {slot['time_block']} · {slot['name']} "
-                        f"<span style='color:#9ca3af;font-size:0.82rem;'>(orden {slot['sort_order']})</span>",
-                        unsafe_allow_html=True,
-                    )
-                with col_btn:
-                    if st.button("🗑", key=f"del_slot_{slot['id']}", help="Eliminar clase"):
-                        delete_slot(slot["id"])
-                        st.success(f"Clase '{slot['name']}' eliminada.")
+    if is_editing:
+        with st.form(f"edit_slot_{slot_id}", clear_on_submit=False):
+            new_name = st.text_input("Nombre", value=slot["name"])
+            tb_idx = TIME_BLOCKS.index(slot["time_block"]) if slot["time_block"] in TIME_BLOCKS else 0
+            new_block = st.selectbox("Franja", TIME_BLOCKS, index=tb_idx)
+            new_order = st.number_input("Orden", min_value=0, value=int(slot["sort_order"]), step=1)
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.form_submit_button("Guardar", type="primary"):
+                    clean = sanitize_text(new_name)
+                    if clean:
+                        update_slot(slot_id, clean, new_block, int(new_order))
+                        st.session_state.pop("admin_editing_slot", None)
+                        st.success(f"'{clean}' actualizada.")
                         st.rerun()
+                    else:
+                        st.error("El nombre no puede estar vacío.")
+            with col_cancel:
+                if st.form_submit_button("Cancelar"):
+                    st.session_state.pop("admin_editing_slot", None)
+                    st.rerun()
+
+    elif confirm_del:
+        st.warning(f"¿Eliminar **{slot['name']}**?")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("Sí, eliminar", key=f"confirm_del_{slot_id}", type="primary"):
+                delete_slot(slot_id)
+                st.session_state.pop("admin_delete_confirm", None)
+                st.success("Clase eliminada.")
+                st.rerun()
+        with col_no:
+            if st.button("Cancelar", key=f"cancel_del_{slot_id}"):
+                st.session_state.pop("admin_delete_confirm", None)
+                st.rerun()
+
+    else:
+        col_info, col_edit, col_del = st.columns([5, 1, 1])
+        with col_info:
+            st.markdown(
+                f"**{slot['name']}** "
+                f"<span style='color:#9a7a3f;font-size:0.82rem;'>"
+                f"(orden {slot['sort_order']})</span>",
+                unsafe_allow_html=True,
+            )
+        with col_edit:
+            if st.button("✏️", key=f"edit_slot_{slot_id}", help="Editar"):
+                st.session_state["admin_editing_slot"] = slot_id
+                st.session_state.pop("admin_delete_confirm", None)
+                st.rerun()
+        with col_del:
+            if st.button("🗑️", key=f"del_slot_{slot_id}", help="Eliminar"):
+                st.session_state["admin_delete_confirm"] = slot_id
+                st.session_state.pop("admin_editing_slot", None)
+                st.rerun()
+
+
+def _render_admin_day_panel(date_str: str, vacation_map: dict) -> None:
+    """Day panel shown below the admin calendar when a day is selected."""
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    day_name = DAY_NAMES_ES[dt.weekday()]
+    month_name = MONTH_NAMES_ES[dt.month]
+
+    st.markdown(
+        f"<div class='section-label'>{day_name} {dt.day} de {month_name}</div>",
+        unsafe_allow_html=True,
+    )
+
+    if date_str in vacation_map:
+        label = vacation_map[date_str] or "Vacaciones"
+        st.warning(f"Día marcado como vacaciones: **{label}**. "
+                   "Puedes igualmente añadir/editar clases si lo necesitas.")
+
+    slots = fetch_slots_for_date(date_str)
+    slots_by_block: dict[str, list] = {block: [] for block in TIME_BLOCKS}
+    for slot in slots:
+        if slot["time_block"] in slots_by_block:
+            slots_by_block[slot["time_block"]].append(slot)
+
+    for block in TIME_BLOCKS:
+        st.markdown(
+            f"<div class='time-block-header'>{block}</div>",
+            unsafe_allow_html=True,
+        )
+        block_slots = slots_by_block[block]
+        if not block_slots:
+            st.markdown(
+                "<div class='slot-empty'>Sin clases en esta franja</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            for slot in block_slots:
+                _render_admin_slot_card(slot)
+
+    # ── Add class form ──
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+    with st.expander("➕ Añadir clase a este día", expanded=False):
+        with st.form(f"add_slot_{date_str}", clear_on_submit=True):
+            new_block = st.selectbox("Franja horaria", TIME_BLOCKS)
+            new_name = st.text_input("Nombre de la clase", placeholder="Ej. Salsa Básica")
+            new_order = st.number_input("Orden dentro de la franja", min_value=0, value=0, step=1)
+            if st.form_submit_button("Crear clase", type="primary"):
+                clean = sanitize_text(new_name)
+                if not clean:
+                    st.error("El nombre es obligatorio.")
+                else:
+                    ok, msg = create_slot(
+                        date=date_str,
+                        time_block=new_block,
+                        name=clean,
+                        sort_order=int(new_order),
+                    )
+                    if ok:
+                        st.success(f"Clase '{clean}' añadida.")
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
+
+def handle_admin_calendar() -> None:
+    """
+    Calendar-based class management for the admin panel.
+    Replaces the old flat-list 'Gestionar clases existentes'.
+    """
+    import json as _json
+
+    today = date.today()
+    year = st.session_state.get("admin_cal_year") or today.year
+    month = st.session_state.get("admin_cal_month") or today.month
+    selected_date: str | None = st.session_state.get("admin_selected_date")
+
+    vacation_map = fetch_vacation_map()
+    slot_counts = fetch_slot_counts_for_month(year, month)
+
+    # ── JS↔Python navigation channel ──
+    adm_nav = st.text_input(
+        "", key="admin_nav_action",
+        label_visibility="collapsed",
+        placeholder="admin_nav_hidden",
+    )
+    if adm_nav == "prev":
+        st.session_state["admin_nav_action"] = ""
+        if month == 1:
+            st.session_state["admin_cal_month"] = 12
+            st.session_state["admin_cal_year"] = year - 1
+        else:
+            st.session_state["admin_cal_month"] = month - 1
+            st.session_state["admin_cal_year"] = year
+        st.rerun()
+    elif adm_nav == "next":
+        st.session_state["admin_nav_action"] = ""
+        if month == 12:
+            st.session_state["admin_cal_month"] = 1
+            st.session_state["admin_cal_year"] = year + 1
+        else:
+            st.session_state["admin_cal_month"] = month + 1
+            st.session_state["admin_cal_year"] = year
+        st.rerun()
+
+    with st.container(border=True):
+        # ── Month/year navigation header ──
+        btn_style = (
+            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
+            "background:linear-gradient(135deg,#393836,#746f6a);"
+            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
+            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
+        )
+        components.html(
+            f"""
+            <div style="display:flex;align-items:center;
+                        justify-content:space-between;padding:4px 2px 2px 2px;">
+              <button style="{btn_style}" onclick="sendAdmNav('prev')">&#9664;</button>
+              <div style="text-align:center;flex:1;padding:0 0.5rem;">
+                <div style="font-size:1rem;font-weight:800;color:#1a1917;
+                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
+                <div style="font-size:0.75rem;color:#cca865;font-weight:600;">
+                  Haz clic en un día para gestionar sus clases</div>
+              </div>
+              <button style="{btn_style}" onclick="sendAdmNav('next')">&#9654;</button>
+            </div>
+            <script>
+            function sendAdmNav(action) {{
+              var input = window.parent.document.querySelector(
+                'input[placeholder="admin_nav_hidden"]'
+              );
+              if (!input) return;
+              var setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value'
+              ).set;
+              setter.call(input, action);
+              input.dispatchEvent(new Event('input', {{bubbles: true}}));
+            }}
+            </script>
+            """,
+            height=68,
+        )
+
+        # ── Day-of-week headers ──
+        for col, lbl in zip(st.columns(7), ["L", "M", "X", "J", "V", "S", "D"]):
+            with col:
+                st.markdown(f"<div class='cal-day-header'>{lbl}</div>", unsafe_allow_html=True)
+
+        # ── Day grid ──
+        today_str = today.strftime("%Y-%m-%d")
+        for week in cal_module.monthcalendar(year, month):
+            for col, day in zip(st.columns(7), week):
+                with col:
+                    if day == 0:
+                        st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
+                    elif f"{year}-{month:02d}-{day:02d}" in vacation_map:
+                        date_str = f"{year}-{month:02d}-{day:02d}"
+                        vac_tip = vacation_map[date_str] or "Sin clases"
+                        st.markdown(
+                            f"<div class='cal-vacation' title='{vac_tip}'>{day}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        date_str = f"{year}-{month:02d}-{day:02d}"
+                        lbl = f"·{day}·" if date_str == today_str else str(day)
+                        if st.button(lbl, key=f"adm_d_{date_str}"):
+                            st.session_state["admin_selected_date"] = date_str
+                            st.session_state.pop("admin_editing_slot", None)
+                            st.session_state.pop("admin_delete_confirm", None)
+                            st.rerun()
+
+        # ── JS: today styling + selected day highlight + class-count badges ──
+        sel_js = selected_date or ""
+        counts_js = _json.dumps(dict(slot_counts))
+        components.html(
+            f"""
+            <script>
+            (function() {{
+                var slotCounts = {counts_js};
+                var selDate = "{sel_js}";
+                var yr = {year};
+                var mo = {month};
+
+                function styleAdmDays() {{
+                    var buttons = window.parent.document.querySelectorAll(
+                        '[data-testid="stButton"] > button'
+                    );
+                    buttons.forEach(function(btn) {{
+                        var p = btn.querySelector('p');
+                        var raw = p ? p.innerText.trim() : btn.innerText.trim();
+                        var isToday = raw.charAt(0) === '\u00b7' && raw.slice(-1) === '\u00b7';
+                        var day = parseInt(raw.replace(/[\u00b7]/g, ''));
+                        if (isNaN(day) || day < 1 || day > 31) return;
+                        var pad = function(n) {{ return String(n).padStart(2,'0'); }};
+                        var dateStr = yr + '-' + pad(mo) + '-' + pad(day);
+
+                        if (isToday) {{
+                            btn.style.background = 'linear-gradient(135deg,#393836,#cca865)';
+                            btn.style.color = '#e9dfcd';
+                            btn.style.borderColor = 'transparent';
+                            btn.style.boxShadow = '0 4px 14px rgba(204,168,101,0.4)';
+                            btn.style.fontWeight = '800';
+                        }}
+                        if (selDate && dateStr === selDate) {{
+                            btn.style.background = 'linear-gradient(135deg,#cca865,#d6ba85)';
+                            btn.style.color = '#1a1917';
+                            btn.style.borderColor = 'transparent';
+                            btn.style.boxShadow = '0 4px 14px rgba(204,168,101,0.35)';
+                            btn.style.fontWeight = '800';
+                        }}
+                        var cnt = slotCounts[dateStr];
+                        if (cnt && !btn.querySelector('.adm-badge')) {{
+                            var badge = document.createElement('sup');
+                            badge.className = 'adm-badge';
+                            badge.textContent = cnt > 9 ? '9+' : String(cnt);
+                            badge.style.cssText = (
+                                'background:#cca865;color:#1a1917;border-radius:6px;'
+                                'padding:0 3px;font-size:9px;font-weight:800;margin-left:1px;'
+                            );
+                            (p || btn).appendChild(badge);
+                        }}
+                    }});
+                }}
+                setTimeout(styleAdmDays, 100);
+                setTimeout(styleAdmDays, 450);
+                setTimeout(styleAdmDays, 950);
+            }})();
+            </script>
+            """,
+            height=0,
+        )
+
+    # ── Day panel ──
+    if selected_date:
+        _render_admin_day_panel(selected_date, vacation_map)
+    else:
+        st.markdown(
+            "<div class='slot-empty'>Selecciona un día en el calendario para ver y gestionar sus clases.</div>",
+            unsafe_allow_html=True,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1395,7 +1652,7 @@ def render_admin_screen(on_logout) -> None:
         st.dataframe(videos, use_container_width=True, hide_index=True)
 
     with tab3:
-        handle_calendar_slots()
+        handle_admin_calendar()
 
     with tab4:
         total_users = fetch_all("SELECT COUNT(*) AS total FROM users")[0]["total"]
