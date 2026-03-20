@@ -140,6 +140,17 @@ def initialize_database() -> None:
         except Exception:
             pass  # La columna ya existe
 
+        # vacation_days: fechas marcadas como vacaciones/sin clase.
+        # date es la clave primaria (una entrada por día).
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS vacation_days (
+                date  TEXT PRIMARY KEY,
+                label TEXT NOT NULL DEFAULT ''
+            );
+            """
+        )
+
         # Migración: campos extra de perfil de usuario
         for migration in [
             "ALTER TABLE users ADD COLUMN first_surname TEXT",
@@ -296,6 +307,34 @@ def register_user(
                         pass  # Permiso ya existía (UNIQUE constraint)
 
         return user_id
+
+
+# ---------------------------------------------------------------------------
+# Queries de días de vacaciones
+# ---------------------------------------------------------------------------
+
+def fetch_vacation_days() -> list[sqlite3.Row]:
+    """Devuelve todas las entradas de vacation_days ordenadas por fecha."""
+    return fetch_all("SELECT date, label FROM vacation_days ORDER BY date ASC")
+
+
+def fetch_vacation_map() -> dict[str, str]:
+    """Devuelve un dict {date_str: label} con todos los días de vacaciones."""
+    return {row["date"]: row["label"] for row in fetch_vacation_days()}
+
+
+def set_vacation_days(entries: list[tuple[str, str]]) -> None:
+    """
+    Reemplaza atómicamente la tabla vacation_days con la lista dada.
+    Cada entry es (date_str, label).
+    """
+    with get_connection() as conn:
+        conn.execute("DELETE FROM vacation_days")
+        for date_str, label in entries:
+            conn.execute(
+                "INSERT INTO vacation_days (date, label) VALUES (?, ?)",
+                (date_str, label or ""),
+            )
 
 
 def fetch_slot_videos_for_user(slot_id: int, user_id: int) -> list[sqlite3.Row]:

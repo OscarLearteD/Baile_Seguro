@@ -23,6 +23,9 @@ from src.db import (
     fetch_slot_videos_for_user,
     fetch_slots_for_date,
     fetch_upcoming_slots,
+    fetch_vacation_days,
+    fetch_vacation_map,
+    set_vacation_days,
 )
 from src.utils import (
     get_video_source_type,
@@ -242,13 +245,17 @@ def render_top_bar(on_logout=None) -> None:
 # Calendario mensual
 # ---------------------------------------------------------------------------
 
-def render_calendar() -> None:
+def render_calendar(vacation_map: dict | None = None) -> None:
     """
     Renderiza un calendario mensual navegable.
     Cada día es un botón clickable que navega a la pantalla del día.
     El grid de 7 columnas se fuerza a permanecer en fila en móvil
     mediante CSS Grid override en styles.py.
+
+    vacation_map: dict {date_str: label} de días marcados como vacaciones.
+                  Esos días se renderizan como celdas no-interactivas.
     """
+    vacation_map = vacation_map or {}
     today = date.today()
     year = st.session_state.get("calendar_year") or today.year
     month = st.session_state.get("calendar_month") or today.month
@@ -344,12 +351,20 @@ def render_calendar() -> None:
                         st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
                     else:
                         date_str = f"{year}-{month:02d}-{day:02d}"
-                        # Marcador visual para el día de hoy
-                        label = f"·{day}·" if date_str == today_str else str(day)
-                        if st.button(label, key=f"cal_d_{date_str}"):
-                            st.session_state["selected_date"] = date_str
-                            st.session_state["screen"] = "calendar_day"
-                            st.rerun()
+                        if date_str in vacation_map:
+                            # Día de vacaciones: celda no-interactiva con tooltip
+                            tooltip = vacation_map[date_str] or "Sin clases"
+                            st.markdown(
+                                f"<div class='cal-vacation' title='{tooltip}'>{day}</div>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            # Día normal: botón navegable
+                            label = f"·{day}·" if date_str == today_str else str(day)
+                            if st.button(label, key=f"cal_d_{date_str}"):
+                                st.session_state["selected_date"] = date_str
+                                st.session_state["screen"] = "calendar_day"
+                                st.rerun()
 
         # Resaltar el botón de hoy con JS: busca por el texto ·N· y aplica estilos
         components.html(
@@ -396,7 +411,7 @@ def render_dashboard(on_logout) -> None:
 
     # Sección 1: Calendario mensual
     st.markdown("<div class='section-label'>Calendario de clases</div>", unsafe_allow_html=True)
-    render_calendar()
+    render_calendar(vacation_map=fetch_vacation_map())
 
     # Separador visual
     st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
@@ -1126,6 +1141,209 @@ def handle_calendar_slots() -> None:
                         st.rerun()
 
 
+# ---------------------------------------------------------------------------
+# Gestión de días de vacaciones (admin)
+# ---------------------------------------------------------------------------
+
+def handle_vacation_days() -> None:
+    """
+    Interfaz admin para marcar / desmarcar días de vacaciones.
+    El admin navega el calendario, hace clic en días para togglearlos
+    y guarda los cambios con el botón "Guardar cambios".
+    """
+    import json as _json
+
+    today = date.today()
+    year = st.session_state.get("vac_cal_year") or today.year
+    month = st.session_state.get("vac_cal_month") or today.month
+
+    # Cargar estado pendiente desde la BD al abrir la primera vez
+    if "vac_pending" not in st.session_state:
+        st.session_state["vac_pending"] = fetch_vacation_map()
+
+    vac_pending: dict = st.session_state["vac_pending"]
+
+    st.markdown(
+        "Haz clic en cualquier día para marcarlo o desmarcarlo como vacaciones. "
+        "Pulsa **Guardar cambios** para persistir la selección.",
+        unsafe_allow_html=False,
+    )
+
+    with st.container(border=True):
+        # --- Canal JS→Python para navegación (placeholder único) ---
+        vac_nav = st.text_input(
+            "", key="vac_nav_action",
+            label_visibility="collapsed",
+            placeholder="vac_nav_hidden",
+        )
+        if vac_nav == "prev":
+            st.session_state["vac_nav_action"] = ""
+            if month == 1:
+                st.session_state["vac_cal_month"] = 12
+                st.session_state["vac_cal_year"] = year - 1
+            else:
+                st.session_state["vac_cal_month"] = month - 1
+                st.session_state["vac_cal_year"] = year
+            st.rerun()
+        elif vac_nav == "next":
+            st.session_state["vac_nav_action"] = ""
+            if month == 12:
+                st.session_state["vac_cal_month"] = 1
+                st.session_state["vac_cal_year"] = year + 1
+            else:
+                st.session_state["vac_cal_month"] = month + 1
+                st.session_state["vac_cal_year"] = year
+            st.rerun()
+
+        # --- Cabecera de navegación mes/año ---
+        btn_style = (
+            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
+            "background:linear-gradient(135deg,#393836,#746f6a);"
+            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
+            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
+        )
+        components.html(
+            f"""
+            <div style="display:flex;align-items:center;
+                        justify-content:space-between;padding:4px 2px 2px 2px;">
+              <button style="{btn_style}" onclick="sendVacNav('prev')">&#9664;</button>
+              <div style="text-align:center;flex:1;padding:0 0.5rem;">
+                <div style="font-size:1rem;font-weight:800;color:#1a1917;
+                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
+              </div>
+              <button style="{btn_style}" onclick="sendVacNav('next')">&#9654;</button>
+            </div>
+            <script>
+            function sendVacNav(action) {{
+              var input = window.parent.document.querySelector(
+                'input[placeholder="vac_nav_hidden"]'
+              );
+              if (!input) return;
+              var setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value'
+              ).set;
+              setter.call(input, action);
+              input.dispatchEvent(new Event('input', {{bubbles: true}}));
+            }}
+            </script>
+            """,
+            height=68,
+        )
+
+        # --- Cabecera días de semana ---
+        day_labels = ["L", "M", "X", "J", "V", "S", "D"]
+        for col, lbl in zip(st.columns(7), day_labels):
+            with col:
+                st.markdown(
+                    f"<div class='cal-day-header'>{lbl}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # --- Grid de días ---
+        today_str = today.strftime("%Y-%m-%d")
+        for week in cal_module.monthcalendar(year, month):
+            for col, day in zip(st.columns(7), week):
+                with col:
+                    if day == 0:
+                        st.markdown("<div class='cal-empty'></div>", unsafe_allow_html=True)
+                    else:
+                        date_str = f"{year}-{month:02d}-{day:02d}"
+                        is_vac = date_str in vac_pending
+                        # Vacation days use ✕ prefix so JS can find and style them
+                        if is_vac:
+                            btn_lbl = f"✕{day}"
+                        elif date_str == today_str:
+                            btn_lbl = f"·{day}·"
+                        else:
+                            btn_lbl = str(day)
+
+                        if st.button(btn_lbl, key=f"vac_d_{date_str}"):
+                            if is_vac:
+                                del st.session_state["vac_pending"][date_str]
+                            else:
+                                # Label is set at save time; pre-fill with current input
+                                st.session_state["vac_pending"][date_str] = ""
+                            st.rerun()
+
+        # --- JS: style vacation buttons (✕ prefix) and today button ---
+        components.html(
+            """
+            <script>
+            (function() {
+                function styleVacDays() {
+                    var buttons = window.parent.document.querySelectorAll(
+                        '[data-testid="stButton"] > button'
+                    );
+                    buttons.forEach(function(btn) {
+                        var p = btn.querySelector('p');
+                        var text = p ? p.innerText.trim() : btn.innerText.trim();
+                        if (text && text.charAt(0) === '\u2715') {
+                            btn.style.background = 'linear-gradient(135deg,#cca865,#d6ba85)';
+                            btn.style.color = '#1a1917';
+                            btn.style.borderColor = 'transparent';
+                            btn.style.fontWeight = '700';
+                            btn.style.opacity = '0.9';
+                        }
+                        if (text && text.charAt(0) === '\u00b7' && text.slice(-1) === '\u00b7') {
+                            btn.style.background = 'linear-gradient(135deg,#393836,#cca865)';
+                            btn.style.color = '#e9dfcd';
+                            btn.style.borderColor = 'transparent';
+                            btn.style.boxShadow = '0 4px 14px rgba(204,168,101,0.4)';
+                            btn.style.fontWeight = '800';
+                        }
+                    });
+                }
+                setTimeout(styleVacDays, 100);
+                setTimeout(styleVacDays, 400);
+                setTimeout(styleVacDays, 900);
+            })();
+            </script>
+            """,
+            height=0,
+        )
+
+    # --- Etiqueta y guardado ---
+    col_lbl, col_btn = st.columns([3, 1])
+    with col_lbl:
+        vac_label = st.text_input(
+            "Etiqueta del periodo (opcional)",
+            key="vac_label_input",
+            placeholder="Ej. Semana Santa, Navidad...",
+        )
+    with col_btn:
+        st.markdown("<div style='height:1.85rem'></div>", unsafe_allow_html=True)
+        if st.button("Guardar cambios", key="save_vacation_days", type="primary"):
+            label_val = vac_label.strip()
+            entries = [
+                (d, lbl if lbl else label_val)
+                for d, lbl in st.session_state["vac_pending"].items()
+            ]
+            set_vacation_days(entries)
+            # Refresh pending from DB so labels are up to date
+            st.session_state["vac_pending"] = fetch_vacation_map()
+            st.success(f"Guardados {len(entries)} días de vacaciones.")
+
+    # --- Resumen de días marcados ---
+    if vac_pending:
+        month_prefix = f"{year}-{month:02d}-"
+        month_vac = {d: lbl for d, lbl in sorted(vac_pending.items()) if d.startswith(month_prefix)}
+        total = len(vac_pending)
+
+        if month_vac:
+            items = []
+            for d, lbl in month_vac.items():
+                day_num = d.split("-")[2].lstrip("0")
+                items.append(f"{day_num} {MONTH_NAMES_ES[int(d.split('-')[1])]}" + (f" ({lbl})" if lbl else ""))
+            st.markdown(
+                f"<div class='video-meta'><strong>Este mes:</strong> {', '.join(items)}</div>",
+                unsafe_allow_html=True,
+            )
+        if total > len(month_vac):
+            st.caption(f"Total en todos los meses: {total} días marcados.")
+    else:
+        st.info("No hay días de vacaciones marcados.")
+
+
 def render_admin_screen(on_logout) -> None:
     if not is_admin():
         st.error("No tienes permisos para acceder al panel admin.")
@@ -1147,7 +1365,7 @@ def render_admin_screen(on_logout) -> None:
     if st.button("← Volver al inicio", key="back_from_admin"):
         navigate_to("dashboard", category=None, level=None)
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Usuarios", "Vídeos", "Calendario", "Resumen"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Usuarios", "Vídeos", "Calendario", "Resumen", "Vacaciones"])
 
     with tab1:
         handle_create_user()
@@ -1192,3 +1410,6 @@ def render_admin_screen(on_logout) -> None:
         with col2:
             st.metric("Vídeos", total_videos)
             st.metric("Permisos", total_permissions)
+
+    with tab5:
+        handle_vacation_days()

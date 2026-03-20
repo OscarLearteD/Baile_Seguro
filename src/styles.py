@@ -286,6 +286,23 @@ def inject_global_styles() -> None:
             display: block;
         }
 
+        /* Día de vacaciones — no interactivo, visualmente apagado */
+        .cal-vacation {
+            min-height: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(174, 159, 132, 0.12);
+            color: #ae9f84;
+            font-size: 0.78rem;
+            font-weight: 500;
+            opacity: 0.55;
+            cursor: default;
+            user-select: none;
+        }
+
         /* Separador visual entre secciones del dashboard */
         .section-divider {
             border: none;
