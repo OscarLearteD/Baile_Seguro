@@ -12,7 +12,7 @@ from src.config import (
     DEFAULT_THUMBNAIL,
     LEVELS,
     MONTH_NAMES_ES,
-    TIME_BLOCKS,
+    get_time_blocks_for_weekday,
 )
 from src.db import (
     create_slot,
@@ -711,6 +711,38 @@ def render_video_screen(on_logout) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Helpers de formato de slots
+# ---------------------------------------------------------------------------
+
+def _format_profesores(raw: str) -> str:
+    """
+    Convierte una cadena de profesores separada por comas en una cadena legible.
+    "Carlos, Eldrys"        → "Carlos y Eldrys"
+    "Ana, Luis, Marta"      → "Ana, Luis y Marta"
+    ""                      → ""
+    """
+    if not raw or not raw.strip():
+        return ""
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return ", ".join(parts[:-1]) + " y " + parts[-1]
+
+
+def _slot_display_label(name: str, profesores: str) -> str:
+    """
+    'Salsa Básica'                          (sin profesores)
+    'Salsa Básica · Profesores: Carlos y Eldrys'   (con profesores)
+    """
+    prof = _format_profesores(profesores)
+    if prof:
+        return f"{name} · Profesores: {prof}"
+    return name
+
+
+# ---------------------------------------------------------------------------
 # Pantalla del día (nueva)
 # ---------------------------------------------------------------------------
 
@@ -749,15 +781,17 @@ def render_calendar_day_screen(on_logout) -> None:
     # Cargar slots de este día desde la BD
     slots = fetch_slots_for_date(selected_date)
 
-    # Agrupar por franja horaria
-    slots_by_block: dict[str, list] = {block: [] for block in TIME_BLOCKS}
+    # Agrupar por franja horaria (usando franjas del día de la semana)
+    day_blocks = get_time_blocks_for_weekday(dt.weekday())
+    slots_by_block: dict[str, list] = {block: [] for block in day_blocks}
     for slot in slots:
         block = slot["time_block"]
-        if block in slots_by_block:
-            slots_by_block[block].append(slot)
+        if block not in slots_by_block:
+            slots_by_block[block] = []
+        slots_by_block[block].append(slot)
 
     # Renderizar cada franja horaria con sus tarjetas
-    for block in TIME_BLOCKS:
+    for block in day_blocks:
         st.markdown(
             f"<div class='time-block-header'>{block}</div>",
             unsafe_allow_html=True,
@@ -772,8 +806,9 @@ def render_calendar_day_screen(on_logout) -> None:
             )
         else:
             for slot in block_slots:
+                label = _slot_display_label(slot["name"], slot["profesores"] or "")
                 if st.button(
-                    slot["name"],
+                    label,
                     key=f"slot_{slot['id']}",
                 ):
                     st.session_state["selected_slot_id"] = slot["id"]
@@ -1096,24 +1131,28 @@ def handle_create_video() -> None:
             st.error(str(exc))
 
 
-def _render_admin_slot_card(slot) -> None:
+def _render_admin_slot_card(slot, weekday: int) -> None:
     """Renders one class card with inline edit / delete-confirm actions."""
     slot_id = slot["id"]
     is_editing = st.session_state.get("admin_editing_slot") == slot_id
     confirm_del = st.session_state.get("admin_delete_confirm") == slot_id
+    day_blocks = get_time_blocks_for_weekday(weekday)
 
     if is_editing:
         with st.form(f"edit_slot_{slot_id}", clear_on_submit=False):
             new_name = st.text_input("Nombre", value=slot["name"])
-            tb_idx = TIME_BLOCKS.index(slot["time_block"]) if slot["time_block"] in TIME_BLOCKS else 0
-            new_block = st.selectbox("Franja", TIME_BLOCKS, index=tb_idx)
+            cur_block = slot["time_block"]
+            blocks_for_edit = day_blocks if cur_block in day_blocks else ([cur_block] + day_blocks)
+            tb_idx = blocks_for_edit.index(cur_block)
+            new_block = st.selectbox("Franja", blocks_for_edit, index=tb_idx)
             new_order = st.number_input("Orden", min_value=0, value=int(slot["sort_order"]), step=1)
+            new_prof = st.text_input("Profesores", value=slot["profesores"] or "")
             col_save, col_cancel = st.columns(2)
             with col_save:
                 if st.form_submit_button("Guardar", type="primary"):
                     clean = sanitize_text(new_name)
                     if clean:
-                        update_slot(slot_id, clean, new_block, int(new_order))
+                        update_slot(slot_id, clean, new_block, int(new_order), sanitize_text(new_prof))
                         st.session_state.pop("admin_editing_slot", None)
                         st.success(f"'{clean}' actualizada.")
                         st.rerun()
@@ -1141,8 +1180,13 @@ def _render_admin_slot_card(slot) -> None:
     else:
         col_info, col_edit, col_del = st.columns([5, 1, 1])
         with col_info:
+            prof_label = _format_profesores(slot["profesores"] or "")
+            prof_html = (
+                f" · <span style='color:#746f6a;font-size:0.82rem;'>Profesores: {prof_label}</span>"
+                if prof_label else ""
+            )
             st.markdown(
-                f"**{slot['name']}** "
+                f"**{slot['name']}**{prof_html} "
                 f"<span style='color:#9a7a3f;font-size:0.82rem;'>"
                 f"(orden {slot['sort_order']})</span>",
                 unsafe_allow_html=True,
@@ -1175,13 +1219,18 @@ def _render_admin_day_panel(date_str: str, vacation_map: dict) -> None:
         st.warning(f"Día marcado como vacaciones: **{label}**. "
                    "Puedes igualmente añadir/editar clases si lo necesitas.")
 
-    slots = fetch_slots_for_date(date_str)
-    slots_by_block: dict[str, list] = {block: [] for block in TIME_BLOCKS}
-    for slot in slots:
-        if slot["time_block"] in slots_by_block:
-            slots_by_block[slot["time_block"]].append(slot)
+    weekday = dt.weekday()
+    day_blocks = get_time_blocks_for_weekday(weekday)
 
-    for block in TIME_BLOCKS:
+    slots = fetch_slots_for_date(date_str)
+    slots_by_block: dict[str, list] = {block: [] for block in day_blocks}
+    for slot in slots:
+        blk = slot["time_block"]
+        if blk not in slots_by_block:
+            slots_by_block[blk] = []
+        slots_by_block[blk].append(slot)
+
+    for block in day_blocks:
         st.markdown(
             f"<div class='time-block-header'>{block}</div>",
             unsafe_allow_html=True,
@@ -1194,14 +1243,15 @@ def _render_admin_day_panel(date_str: str, vacation_map: dict) -> None:
             )
         else:
             for slot in block_slots:
-                _render_admin_slot_card(slot)
+                _render_admin_slot_card(slot, weekday)
 
     # ── Add class form ──
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
     with st.expander("➕ Añadir clase a este día", expanded=False):
         with st.form(f"add_slot_{date_str}", clear_on_submit=True):
-            new_block = st.selectbox("Franja horaria", TIME_BLOCKS)
+            new_block = st.selectbox("Franja horaria", day_blocks)
             new_name = st.text_input("Nombre de la clase", placeholder="Ej. Salsa Básica")
+            new_prof = st.text_input("Profesores (opcional)", placeholder="Ej. Carlos, Eldrys")
             new_order = st.number_input("Orden dentro de la franja", min_value=0, value=0, step=1)
             if st.form_submit_button("Crear clase", type="primary"):
                 clean = sanitize_text(new_name)
@@ -1213,6 +1263,7 @@ def _render_admin_day_panel(date_str: str, vacation_map: dict) -> None:
                         time_block=new_block,
                         name=clean,
                         sort_order=int(new_order),
+                        profesores=sanitize_text(new_prof),
                     )
                     if ok:
                         st.success(f"Clase '{clean}' añadida.")

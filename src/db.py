@@ -151,6 +151,14 @@ def initialize_database() -> None:
             """
         )
 
+        # Migración: campo profesores en class_slots
+        try:
+            cursor.execute(
+                "ALTER TABLE class_slots ADD COLUMN profesores TEXT"
+            )
+        except Exception:
+            pass  # La columna ya existe
+
         # Migración: campos extra de perfil de usuario
         for migration in [
             "ALTER TABLE users ADD COLUMN first_surname TEXT",
@@ -198,7 +206,7 @@ def execute_insert(query: str, params: tuple[Any, ...] = ()) -> int:
 # Queries específicas del calendario
 # ---------------------------------------------------------------------------
 
-def create_slot(date: str, time_block: str, name: str, sort_order: int) -> tuple[bool, str]:
+def create_slot(date: str, time_block: str, name: str, sort_order: int, profesores: str = "") -> tuple[bool, str]:
     """
     Crea un nuevo slot en el calendario.
     Devuelve (True, "") si OK o (False, mensaje) si ya existe o falla.
@@ -206,10 +214,10 @@ def create_slot(date: str, time_block: str, name: str, sort_order: int) -> tuple
     try:
         execute_insert(
             """
-            INSERT INTO class_slots (date, time_block, name, sort_order, is_active)
-            VALUES (?, ?, ?, ?, 1)
+            INSERT INTO class_slots (date, time_block, name, sort_order, profesores, is_active)
+            VALUES (?, ?, ?, ?, ?, 1)
             """,
-            (date, time_block, name, sort_order),
+            (date, time_block, name, sort_order, profesores or ""),
         )
         return True, ""
     except Exception:
@@ -221,11 +229,11 @@ def delete_slot(slot_id: int) -> None:
     execute_query("DELETE FROM class_slots WHERE id = ?", (slot_id,))
 
 
-def update_slot(slot_id: int, name: str, time_block: str, sort_order: int) -> None:
-    """Actualiza nombre, franja horaria y orden de un slot existente."""
+def update_slot(slot_id: int, name: str, time_block: str, sort_order: int, profesores: str = "") -> None:
+    """Actualiza nombre, franja horaria, orden y profesores de un slot existente."""
     execute_query(
-        "UPDATE class_slots SET name=?, time_block=?, sort_order=? WHERE id=?",
-        (name, time_block, sort_order, slot_id),
+        "UPDATE class_slots SET name=?, time_block=?, sort_order=?, profesores=? WHERE id=?",
+        (name, time_block, sort_order, profesores or "", slot_id),
     )
 
 
@@ -268,7 +276,7 @@ def fetch_slots_for_date(date_str: str) -> list[sqlite3.Row]:
     """
     return fetch_all(
         """
-        SELECT id, date, time_block, name, sort_order
+        SELECT id, date, time_block, name, sort_order, profesores
         FROM class_slots
         WHERE date = ? AND is_active = 1
         ORDER BY time_block ASC, sort_order ASC

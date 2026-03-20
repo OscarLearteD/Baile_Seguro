@@ -23,11 +23,33 @@ LEVELS = [
 ]
 
 # Franjas horarias fijas para las clases del calendario
+# Default (lunes, miércoles, jueves, viernes, domingo)
 TIME_BLOCKS = [
     "19:00-20:00",
     "20:00-21:00",
     "21:00-22:00",
 ]
+
+# Franjas por día de la semana (0=lunes … 6=domingo).
+# Solo se definen los días que difieren del default.
+_TIME_BLOCKS_BY_WEEKDAY: dict[int, list[str]] = {
+    1: [  # Martes
+        "10:30-11:30",
+        "11:30-12:30",
+        "19:00-20:00",
+        "20:00-21:00",
+        "21:00-22:00",
+    ],
+    5: [  # Sábado
+        "17:30-18:30",
+        "18:30-19:30",
+    ],
+}
+
+
+def get_time_blocks_for_weekday(weekday: int) -> list[str]:
+    """Devuelve la lista de franjas horarias para el día de la semana dado (0=lunes)."""
+    return _TIME_BLOCKS_BY_WEEKDAY.get(weekday, TIME_BLOCKS)
 
 # Nombres de meses en español (índice 1-12, el 0 es vacío)
 MONTH_NAMES_ES = [
