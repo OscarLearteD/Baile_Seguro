@@ -1224,7 +1224,8 @@ def _render_admin_day_panel(date_str: str, vacation_map: dict) -> None:
 def handle_admin_calendar() -> None:
     """
     Calendar-based class management for the admin panel.
-    Replaces the old flat-list 'Gestionar clases existentes'.
+    Structure mirrors handle_vacation_days() exactly so the same
+    nav channel pattern (text_input inside the border container) applies.
     """
     import json as _json
 
@@ -1236,32 +1237,37 @@ def handle_admin_calendar() -> None:
     vacation_map = fetch_vacation_map()
     slot_counts = fetch_slot_counts_for_month(year, month)
 
-    # ── JS↔Python navigation channel ──
-    adm_nav = st.text_input(
-        "", key="admin_nav_action",
-        label_visibility="collapsed",
-        placeholder="admin_nav_hidden",
+    st.markdown(
+        "Haz clic en un día para ver y gestionar sus clases. "
+        "Los días con clases muestran un contador dorado.",
+        unsafe_allow_html=False,
     )
-    if adm_nav == "prev":
-        st.session_state["admin_nav_action"] = ""
-        if month == 1:
-            st.session_state["admin_cal_month"] = 12
-            st.session_state["admin_cal_year"] = year - 1
-        else:
-            st.session_state["admin_cal_month"] = month - 1
-            st.session_state["admin_cal_year"] = year
-        st.rerun()
-    elif adm_nav == "next":
-        st.session_state["admin_nav_action"] = ""
-        if month == 12:
-            st.session_state["admin_cal_month"] = 1
-            st.session_state["admin_cal_year"] = year + 1
-        else:
-            st.session_state["admin_cal_month"] = month + 1
-            st.session_state["admin_cal_year"] = year
-        st.rerun()
 
     with st.container(border=True):
+        # ── JS↔Python navigation channel — INSIDE container (same as vacation days) ──
+        adm_nav = st.text_input(
+            "", key="admin_nav_action",
+            label_visibility="collapsed",
+            placeholder="admin_nav_hidden",
+        )
+        if adm_nav == "prev":
+            st.session_state["admin_nav_action"] = ""
+            if month == 1:
+                st.session_state["admin_cal_month"] = 12
+                st.session_state["admin_cal_year"] = year - 1
+            else:
+                st.session_state["admin_cal_month"] = month - 1
+                st.session_state["admin_cal_year"] = year
+            st.rerun()
+        elif adm_nav == "next":
+            st.session_state["admin_nav_action"] = ""
+            if month == 12:
+                st.session_state["admin_cal_month"] = 1
+                st.session_state["admin_cal_year"] = year + 1
+            else:
+                st.session_state["admin_cal_month"] = month + 1
+                st.session_state["admin_cal_year"] = year
+            st.rerun()
         # ── Month/year navigation header ──
         btn_style = (
             "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
