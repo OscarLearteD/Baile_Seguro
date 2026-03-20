@@ -147,63 +147,58 @@ def render_top_bar(on_logout=None) -> None:
     user = st.session_state.get("user", {})
 
     _logo_path = Path(__file__).parent.parent / "assets" / "logo.png"
-    if _logo_path.exists():
-        import base64 as _b64
-        _logo_src = f"data:image/png;base64,{_b64.b64encode(_logo_path.read_bytes()).decode()}"
+    import base64 as _b64
+    _logo_tag = (
+        f'<img src="data:image/png;base64,{_b64.b64encode(_logo_path.read_bytes()).decode()}"'
+        f' alt="Baile Seguro"'
+        f' style="display:block;object-fit:contain;width:auto;max-height:56px;">'
+        if _logo_path.exists() else ""
+    )
+
+    full_name = user.get("full_name", "")
+    role = user.get("role", "student")
+
+    # CSS injected once: vertically center the header columns row
+    st.markdown(
+        """
+        <style>
+        .hdr-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            overflow: visible;
+        }
+        .hdr-left [data-testid="stMarkdownContainer"] { overflow: visible !important; }
+        /* Vertically center every column in this row */
+        [data-testid="stColumns"] { align-items: center; }
+        /* Hide user-info text on very small screens */
+        @media (max-width: 480px) { .hdr-user-text { display: none; } }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_left, col_admin, col_logout = st.columns([5, 1, 1])
+
+    with col_left:
         st.markdown(
             f"""
-            <style>
-            /* Ensure Streamlit's own markdown wrapper doesn't clip the logo */
-            [data-testid="stMarkdownContainer"]:has(.site-logo-wrap) {{
-                overflow: visible !important;
-                line-height: 0;
-            }}
-            .site-logo-wrap {{
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                overflow: visible;
-                margin-bottom: 0.5rem;
-            }}
-            @media (min-width: 640px) {{
-                .site-logo-wrap {{
-                    justify-content: flex-start;
-                }}
-            }}
-            .site-logo-wrap img {{
-                display: block;
-                object-fit: contain;
-                width: auto;
-                height: auto;
-                max-height: 56px;
-            }}
-            @media (min-width: 640px) {{
-                .site-logo-wrap img {{
-                    max-height: 64px;
-                }}
-            }}
-            </style>
-            <div class="site-logo-wrap">
-                <img src="{_logo_src}" alt="Baile Seguro" />
+            <div class="hdr-left">
+                {_logo_tag}
+                <div class="small-note hdr-user-text">
+                    Conectado como <strong>{full_name}</strong> · {role}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    col1, col2, col3 = st.columns([3, 1, 1])
-
-    with col1:
-        st.markdown(
-            f"<div class='small-note'>Conectado como <strong>{user.get('full_name', '')}</strong> · {user.get('role', 'student')}</div>",
-            unsafe_allow_html=True,
-        )
-
-    with col2:
+    with col_admin:
         if is_admin():
             if st.button("Admin", key="go_admin"):
                 navigate_to("admin")
 
-    with col3:
+    with col_logout:
         if on_logout and st.button("Salir", key=f"logout_{st.session_state.get('screen', 'screen')}"):
             on_logout()
 
