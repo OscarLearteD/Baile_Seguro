@@ -204,9 +204,6 @@ def inject_global_styles() -> None:
             margin-bottom: 1rem !important;
         }
 
-        [data-testid="stTextInput"]:has(input[placeholder="cal_nav_hidden"]),
-        [data-testid="stTextInput"]:has(input[placeholder="vac_nav_hidden"]),
-        [data-testid="stTextInput"]:has(input[placeholder="admin_nav_hidden"]),
         [data-testid="stTextInput"]:has(input[placeholder^="vplay_"]) {
             position: absolute !important;
             opacity: 0 !important;

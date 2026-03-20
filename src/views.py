@@ -263,72 +263,37 @@ def render_calendar(vacation_map: dict | None = None) -> None:
     month = st.session_state.get("calendar_month") or today.month
 
     with st.container(border=True):
-        # Canal JS→Python: input oculto con placeholder único como selector
-        nav_action = st.text_input(
-            "", key="cal_nav_action",
-            label_visibility="collapsed",
-            placeholder="cal_nav_hidden",
-        )
-        if nav_action == "prev":
-            st.session_state["cal_nav_action"] = ""
-            if month == 1:
-                st.session_state["calendar_month"] = 12
-                st.session_state["calendar_year"] = year - 1
-            else:
-                st.session_state["calendar_month"] = month - 1
-                st.session_state["calendar_year"] = year
-            st.rerun()
-        elif nav_action == "next":
-            st.session_state["cal_nav_action"] = ""
-            if month == 12:
-                st.session_state["calendar_month"] = 1
-                st.session_state["calendar_year"] = year + 1
-            else:
-                st.session_state["calendar_month"] = month + 1
-                st.session_state["calendar_year"] = year
-            st.rerun()
-
-        # Header: HTML flexbox con flechas reales — no depende de st.columns()
+        # ── Cabecera de navegación mes/año ──
         today_hint = (
-            f"Hoy: {today.day}"
+            f" · Hoy: {today.day}"
             if (year == today.year and month == today.month)
             else ""
         )
-        btn_style = (
-            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
-            "background:linear-gradient(135deg,#393836,#746f6a);"
-            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
-            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
-        )
-        components.html(
-            f"""
-            <div style="display:flex;align-items:center;
-                        justify-content:space-between;padding:4px 2px 2px 2px;">
-              <button style="{btn_style}" onclick="sendNav('prev')">&#9664;</button>
-              <div style="text-align:center;flex:1;padding:0 0.5rem;">
-                <div style="font-size:1rem;font-weight:800;color:#1a1917;
-                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
-                <div style="font-size:0.75rem;color:#cca865;font-weight:600;">
-                  {today_hint}</div>
-              </div>
-              <button style="{btn_style}" onclick="sendNav('next')">&#9654;</button>
-            </div>
-            <script>
-            function sendNav(action) {{
-              var input = window.parent.document.querySelector(
-                'input[placeholder="cal_nav_hidden"]'
-              );
-              if (!input) return;
-              var setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value'
-              ).set;
-              setter.call(input, action);
-              input.dispatchEvent(new Event('input', {{bubbles: true}}));
-            }}
-            </script>
-            """,
-            height=68,
-        )
+        col_prev, col_title, col_next = st.columns([1, 5, 1])
+        with col_prev:
+            if st.button("◀", key="cal_prev", use_container_width=True):
+                if month == 1:
+                    st.session_state["calendar_month"] = 12
+                    st.session_state["calendar_year"] = year - 1
+                else:
+                    st.session_state["calendar_month"] = month - 1
+                    st.session_state["calendar_year"] = year
+                st.rerun()
+        with col_title:
+            st.markdown(
+                f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}"
+                f"<span class='cal-today-hint'>{today_hint}</span></div>",
+                unsafe_allow_html=True,
+            )
+        with col_next:
+            if st.button("▶", key="cal_next", use_container_width=True):
+                if month == 12:
+                    st.session_state["calendar_month"] = 1
+                    st.session_state["calendar_year"] = year + 1
+                else:
+                    st.session_state["calendar_month"] = month + 1
+                    st.session_state["calendar_year"] = year
+                st.rerun()
 
         # --- Cabecera de días de la semana ---
         day_labels = ["L", "M", "X", "J", "V", "S", "D"]
@@ -1295,66 +1260,31 @@ def handle_admin_calendar() -> None:
     )
 
     with st.container(border=True):
-        # ── JS↔Python navigation channel — INSIDE container (same as vacation days) ──
-        adm_nav = st.text_input(
-            "", key="admin_nav_action",
-            label_visibility="collapsed",
-            placeholder="admin_nav_hidden",
-        )
-        if adm_nav == "prev":
-            st.session_state["admin_nav_action"] = ""
-            if month == 1:
-                st.session_state["admin_cal_month"] = 12
-                st.session_state["admin_cal_year"] = year - 1
-            else:
-                st.session_state["admin_cal_month"] = month - 1
-                st.session_state["admin_cal_year"] = year
-            st.rerun()
-        elif adm_nav == "next":
-            st.session_state["admin_nav_action"] = ""
-            if month == 12:
-                st.session_state["admin_cal_month"] = 1
-                st.session_state["admin_cal_year"] = year + 1
-            else:
-                st.session_state["admin_cal_month"] = month + 1
-                st.session_state["admin_cal_year"] = year
-            st.rerun()
-        # ── Month/year navigation header ──
-        btn_style = (
-            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
-            "background:linear-gradient(135deg,#393836,#746f6a);"
-            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
-            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
-        )
-        components.html(
-            f"""
-            <div style="display:flex;align-items:center;
-                        justify-content:space-between;padding:4px 2px 2px 2px;">
-              <button style="{btn_style}" onclick="sendAdmNav('prev')">&#9664;</button>
-              <div style="text-align:center;flex:1;padding:0 0.5rem;">
-                <div style="font-size:1rem;font-weight:800;color:#1a1917;
-                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
-                <div style="font-size:0.75rem;color:#cca865;font-weight:600;">
-                  Haz clic en un día para gestionar sus clases</div>
-              </div>
-              <button style="{btn_style}" onclick="sendAdmNav('next')">&#9654;</button>
-            </div>
-            <script>
-            function sendAdmNav(action) {{
-              var input = window.parent.document.querySelector(
-                'input[placeholder="admin_nav_hidden"]'
-              );
-              if (!input) return;
-              var setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value'
-              ).set;
-              setter.call(input, action);
-              input.dispatchEvent(new Event('input', {{bubbles: true}}));
-            }}
-            </script>
-            """,
-            height=68,
-        )
+        # ── Cabecera de navegación mes/año ──
+        col_prev, col_title, col_next = st.columns([1, 5, 1])
+        with col_prev:
+            if st.button("◀", key="adm_cal_prev", use_container_width=True):
+                if month == 1:
+                    st.session_state["admin_cal_month"] = 12
+                    st.session_state["admin_cal_year"] = year - 1
+                else:
+                    st.session_state["admin_cal_month"] = month - 1
+                    st.session_state["admin_cal_year"] = year
+                st.rerun()
+        with col_title:
+            st.markdown(
+                f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>",
+                unsafe_allow_html=True,
+            )
+        with col_next:
+            if st.button("▶", key="adm_cal_next", use_container_width=True):
+                if month == 12:
+                    st.session_state["admin_cal_month"] = 1
+                    st.session_state["admin_cal_year"] = year + 1
+                else:
+                    st.session_state["admin_cal_month"] = month + 1
+                    st.session_state["admin_cal_year"] = year
+                st.rerun()
 
         # ── Day-of-week headers ──
         for col, lbl in zip(st.columns(7), ["L", "M", "X", "J", "V", "S", "D"]):
@@ -1484,65 +1414,31 @@ def handle_vacation_days() -> None:
     )
 
     with st.container(border=True):
-        # --- Canal JS→Python para navegación (placeholder único) ---
-        vac_nav = st.text_input(
-            "", key="vac_nav_action",
-            label_visibility="collapsed",
-            placeholder="vac_nav_hidden",
-        )
-        if vac_nav == "prev":
-            st.session_state["vac_nav_action"] = ""
-            if month == 1:
-                st.session_state["vac_cal_month"] = 12
-                st.session_state["vac_cal_year"] = year - 1
-            else:
-                st.session_state["vac_cal_month"] = month - 1
-                st.session_state["vac_cal_year"] = year
-            st.rerun()
-        elif vac_nav == "next":
-            st.session_state["vac_nav_action"] = ""
-            if month == 12:
-                st.session_state["vac_cal_month"] = 1
-                st.session_state["vac_cal_year"] = year + 1
-            else:
-                st.session_state["vac_cal_month"] = month + 1
-                st.session_state["vac_cal_year"] = year
-            st.rerun()
-
-        # --- Cabecera de navegación mes/año ---
-        btn_style = (
-            "width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;"
-            "background:linear-gradient(135deg,#393836,#746f6a);"
-            "color:#e9dfcd;font-size:1.2rem;font-weight:700;flex-shrink:0;"
-            "box-shadow:0 4px 14px rgba(57,56,54,0.35);"
-        )
-        components.html(
-            f"""
-            <div style="display:flex;align-items:center;
-                        justify-content:space-between;padding:4px 2px 2px 2px;">
-              <button style="{btn_style}" onclick="sendVacNav('prev')">&#9664;</button>
-              <div style="text-align:center;flex:1;padding:0 0.5rem;">
-                <div style="font-size:1rem;font-weight:800;color:#1a1917;
-                            line-height:1.3;">{MONTH_NAMES_ES[month]} {year}</div>
-              </div>
-              <button style="{btn_style}" onclick="sendVacNav('next')">&#9654;</button>
-            </div>
-            <script>
-            function sendVacNav(action) {{
-              var input = window.parent.document.querySelector(
-                'input[placeholder="vac_nav_hidden"]'
-              );
-              if (!input) return;
-              var setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value'
-              ).set;
-              setter.call(input, action);
-              input.dispatchEvent(new Event('input', {{bubbles: true}}));
-            }}
-            </script>
-            """,
-            height=68,
-        )
+        # ── Cabecera de navegación mes/año ──
+        col_prev, col_title, col_next = st.columns([1, 5, 1])
+        with col_prev:
+            if st.button("◀", key="vac_cal_prev", use_container_width=True):
+                if month == 1:
+                    st.session_state["vac_cal_month"] = 12
+                    st.session_state["vac_cal_year"] = year - 1
+                else:
+                    st.session_state["vac_cal_month"] = month - 1
+                    st.session_state["vac_cal_year"] = year
+                st.rerun()
+        with col_title:
+            st.markdown(
+                f"<div class='cal-month-title'>{MONTH_NAMES_ES[month]} {year}</div>",
+                unsafe_allow_html=True,
+            )
+        with col_next:
+            if st.button("▶", key="vac_cal_next", use_container_width=True):
+                if month == 12:
+                    st.session_state["vac_cal_month"] = 1
+                    st.session_state["vac_cal_year"] = year + 1
+                else:
+                    st.session_state["vac_cal_month"] = month + 1
+                    st.session_state["vac_cal_year"] = year
+                st.rerun()
 
         # --- Cabecera días de semana ---
         day_labels = ["L", "M", "X", "J", "V", "S", "D"]
