@@ -457,23 +457,83 @@ def render_video_card(video) -> None:
             )
             st.markdown(
                 f"""
-                <div style="position:relative;border-radius:14px;
-                            overflow:hidden;margin-bottom:0.5rem;">
+                <div id="thumb-wrap-{vid_id}"
+                     style="position:relative;border-radius:14px;
+                            overflow:hidden;margin-bottom:0.5rem;cursor:pointer;">
                     <img src="{thumb_src}"
                          style="width:100%;display:block;height:auto;" />
-                    <div style="position:absolute;top:50%;left:50%;
+                    <div class="play-overlay-btn"
+                         style="position:absolute;top:50%;left:50%;
                                 transform:translate(-50%,-50%);
-                                background:rgba(57,56,54,0.82);
+                                background:rgba(0,0,0,0.80);
                                 border-radius:50%;width:64px;height:64px;
                                 display:flex;align-items:center;
                                 justify-content:center;color:#e9dfcd;
                                 font-size:1.6rem;pointer-events:none;
-                                box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+                                transition:background 0.15s ease;
+                                box-shadow:0 4px 16px rgba(0,0,0,0.4);">
                         &#9654;
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
+            )
+            # Wire thumbnail click → hidden Streamlit play button, golden active state
+            components.html(
+                f"""
+                <script>
+                (function() {{
+                    var vidId = '{vid_id}';
+                    function setup() {{
+                        var par = window.parent.document;
+                        var wrap = par.getElementById('thumb-wrap-' + vidId);
+                        if (!wrap) {{ setTimeout(setup, 150); return; }}
+
+                        var allBtns = Array.from(
+                            par.querySelectorAll('[data-testid="stButton"] > button')
+                        );
+                        var targetBtn = null;
+                        for (var i = 0; i < allBtns.length; i++) {{
+                            var btn = allBtns[i];
+                            var p = btn.querySelector('p');
+                            var text = p ? p.innerText.trim() : btn.innerText.trim();
+                            if (text.includes('Reproducir')) {{
+                                var pos = wrap.compareDocumentPosition(btn);
+                                if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {{
+                                    targetBtn = btn;
+                                    break;
+                                }}
+                            }}
+                        }}
+
+                        if (targetBtn) {{
+                            var container = targetBtn.closest('[data-testid="stButton"]');
+                            if (container) container.style.display = 'none';
+
+                            wrap.onclick = function() {{ targetBtn.click(); }};
+
+                            wrap.addEventListener('mousedown', function() {{
+                                var ov = wrap.querySelector('.play-overlay-btn');
+                                if (ov) ov.style.background = 'rgba(204,168,101,0.88)';
+                            }});
+                            wrap.addEventListener('mouseup', function() {{
+                                var ov = wrap.querySelector('.play-overlay-btn');
+                                if (ov) ov.style.background = 'rgba(0,0,0,0.80)';
+                            }});
+                            wrap.addEventListener('mouseleave', function() {{
+                                var ov = wrap.querySelector('.play-overlay-btn');
+                                if (ov) ov.style.background = 'rgba(0,0,0,0.80)';
+                            }});
+                        }} else {{
+                            setTimeout(setup, 300);
+                        }}
+                    }}
+                    setTimeout(setup, 100);
+                    setTimeout(setup, 600);
+                }})();
+                </script>
+                """,
+                height=0,
             )
 
         if st.button("▶ Reproducir", key=f"play_btn_{vid_id}"):
