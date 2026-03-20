@@ -212,6 +212,50 @@ def inject_global_styles() -> None:
             overflow: hidden !important;
         }
 
+        /* ── Fila de navegación (◀ mes/año ▶) ───────────────────────────── */
+        /* Scoped via .cal-month-title — used only in calendar nav rows      */
+
+        [data-testid="stHorizontalBlock"]:has(.cal-month-title) {
+            align-items: center !important;
+            gap: 0.25rem !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(.cal-month-title)
+            [data-testid="stButton"] > button {
+            min-height: 42px !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+            padding: 0 0.5rem !important;
+            font-size: 1rem !important;
+            font-weight: 700 !important;
+            background: white !important;
+            border: 1px solid #e9dfcd !important;
+            color: #746f6a !important;
+            box-shadow: none !important;
+            transform: none !important;
+            transition: background 0.15s ease, border-color 0.15s ease,
+                        color 0.15s ease !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(.cal-month-title)
+            [data-testid="stButton"] > button:hover {
+            background: rgba(204, 168, 101, 0.12) !important;
+            border-color: #cca865 !important;
+            color: #9a7a3f !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(.cal-month-title)
+            [data-testid="stButton"] > button:active {
+            background: rgba(204, 168, 101, 0.28) !important;
+            border-color: #b8934d !important;
+            color: #9a7a3f !important;
+            box-shadow: none !important;
+        }
+
+        /* ── Cuadrícula de 7 columnas (días) ────────────────────────────── */
+
         [data-testid="stHorizontalBlock"]:has(
             > [data-testid="stColumn"]:nth-child(7)
         ) {
@@ -232,13 +276,15 @@ def inject_global_styles() -> None:
             padding: 0 !important;
         }
 
+        /* Layout props use !important; color/bg/border do NOT —
+           JS inline styles (today, selected, vacation) must override them. */
         [data-testid="stHorizontalBlock"]:has(
             > [data-testid="stColumn"]:nth-child(7)
         ) [data-testid="stButton"] > button {
             min-height: 40px !important;
             height: 40px !important;
             padding: 0 2px !important;
-            font-size: 0.78rem !important;
+            font-size: 0.82rem !important;
             font-weight: 600 !important;
             border-radius: 8px !important;
             box-shadow: none !important;
@@ -246,6 +292,23 @@ def inject_global_styles() -> None:
             overflow: hidden !important;
             white-space: nowrap !important;
             line-height: 1 !important;
+            transform: none !important;
+            background: #faf7f2;
+            border: 1px solid #e9dfcd;
+            color: #1a1917;
+            transition: background 0.12s ease, border-color 0.12s ease;
+        }
+
+        /* Hover — no !important on bg/border so JS-styled cells keep
+           their inline styles (today stays dark-gold, selected stays gold). */
+        [data-testid="stHorizontalBlock"]:has(
+            > [data-testid="stColumn"]:nth-child(7)
+        ) [data-testid="stButton"] > button:hover {
+            background: rgba(204, 168, 101, 0.13);
+            border-color: #cca865;
+            color: #9a7a3f;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         .cal-month-title {
@@ -253,18 +316,15 @@ def inject_global_styles() -> None:
             font-size: 1rem;
             font-weight: 800;
             color: #1a1917;
-            padding: 0.4rem 0 0.1rem 0;
-            line-height: 1.3;
+            padding: 0.25rem 0;
+            line-height: 1.4;
             width: 100%;
         }
 
         .cal-today-hint {
-            text-align: center;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: #cca865;
             font-weight: 600;
-            margin-bottom: 0.4rem;
-            width: 100%;
         }
 
         /* Cabeceras L M X J V S D */
@@ -273,9 +333,9 @@ def inject_global_styles() -> None:
             font-size: 0.65rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #9a7a3f;
-            padding: 0.2rem 0;
+            letter-spacing: 0.05em;
+            color: #ae9f84;
+            padding: 0.3rem 0 0.15rem 0;
         }
 
         /* Celda vacía (día fuera del mes) */
@@ -283,9 +343,10 @@ def inject_global_styles() -> None:
             min-height: 40px;
             height: 40px;
             display: block;
+            background: transparent;
         }
 
-        /* Día de vacaciones — no interactivo, visualmente apagado */
+        /* Día de vacaciones — no interactivo, claramente apagado */
         .cal-vacation {
             min-height: 40px;
             height: 40px;
@@ -293,11 +354,11 @@ def inject_global_styles() -> None:
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-            background: rgba(174, 159, 132, 0.12);
+            background: rgba(174, 159, 132, 0.08);
             color: #ae9f84;
             font-size: 0.78rem;
             font-weight: 500;
-            opacity: 0.55;
+            opacity: 0.38;
             cursor: default;
             user-select: none;
         }
