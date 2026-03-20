@@ -145,6 +145,41 @@ def render_login_screen(on_login) -> None:
 
 def render_top_bar(on_logout=None) -> None:
     user = st.session_state.get("user", {})
+
+    _logo_path = Path(__file__).parent.parent / "assets" / "logo.png"
+    if _logo_path.exists():
+        import base64 as _b64
+        _logo_src = f"data:image/png;base64,{_b64.b64encode(_logo_path.read_bytes()).decode()}"
+        st.markdown(
+            f"""
+            <style>
+            .site-logo-wrap {{
+                display: flex;
+                justify-content: center;
+                margin-bottom: 0.5rem;
+            }}
+            @media (min-width: 640px) {{
+                .site-logo-wrap {{
+                    justify-content: flex-start;
+                }}
+            }}
+            .site-logo-wrap img {{
+                max-height: 40px;
+                width: auto;
+            }}
+            @media (min-width: 640px) {{
+                .site-logo-wrap img {{
+                    max-height: 48px;
+                }}
+            }}
+            </style>
+            <div class="site-logo-wrap">
+                <img src="{_logo_src}" alt="Baile Seguro" />
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     col1, col2, col3 = st.columns([3, 1, 1])
 
     with col1:
