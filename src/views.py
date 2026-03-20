@@ -158,19 +158,54 @@ def render_top_bar(on_logout=None) -> None:
     full_name = user.get("full_name", "")
     role = user.get("role", "student")
 
-    # CSS injected once: vertically center the header columns row
     st.markdown(
         """
         <style>
+        /* ── Logo+text group ─────────────────────────────────────────── */
         .hdr-left {
             display: flex;
             flex-direction: column;
             gap: 0.2rem;
             overflow: visible;
         }
-        .hdr-left [data-testid="stMarkdownContainer"] { overflow: visible !important; }
-        /* Vertically center every column in this row */
-        [data-testid="stColumns"] { align-items: center; }
+
+        /* ── Header card: scope every rule with :has(.hdr-left) ─────── */
+        /* Targets the stHorizontalBlock/stColumns that contains our header */
+        [data-testid="stHorizontalBlock"]:has(.hdr-left),
+        [data-testid="stColumns"]:has(.hdr-left) {
+            align-items: center !important;
+            flex-wrap: nowrap !important;         /* never stack on mobile */
+            background: white;
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 4px 12px rgba(57,56,54,0.07);
+            border: 1px solid #e9dfcd;
+            margin-bottom: 1rem;
+        }
+
+        /* Left column: take remaining space, allow shrink, no overflow clip */
+        [data-testid="stHorizontalBlock"]:has(.hdr-left) [data-testid="stColumn"]:first-child,
+        [data-testid="stColumns"]:has(.hdr-left) [data-testid="stColumn"]:first-child {
+            flex: 1 1 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+            overflow: visible !important;
+        }
+
+        /* Button columns: shrink to fit content, never full-width */
+        [data-testid="stHorizontalBlock"]:has(.hdr-left) [data-testid="stColumn"]:not(:first-child),
+        [data-testid="stColumns"]:has(.hdr-left) [data-testid="stColumn"]:not(:first-child) {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }
+
+        /* Buttons: compact width, never stretch to column width */
+        [data-testid="stHorizontalBlock"]:has(.hdr-left) [data-testid="stButton"] > button,
+        [data-testid="stColumns"]:has(.hdr-left) [data-testid="stButton"] > button {
+            width: auto !important;
+        }
+
         /* Hide user-info text on very small screens */
         @media (max-width: 480px) { .hdr-user-text { display: none; } }
         </style>
